@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:investment_plan_app/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'screens/LoginScreen.dart';
 import 'screens/SignUpScreen.dart';
 import 'screens/home_screen.dart';
@@ -19,6 +20,10 @@ void main() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize OneSignal
+  OneSignal.initialize('0d5f52a7-45de-4bcd-8987-b8b9dedc7509');
+  await OneSignal.Notifications.requestPermission(true);
+  
   // Check login status before building the app
   bool isLoggedIn = await checkLoginStatus();
   runApp(MyApp(

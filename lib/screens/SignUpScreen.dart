@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:investment_plan_app/screens/WelcomeScreen.dart';
 import 'package:investment_plan_app/services/user_service.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -15,10 +16,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool agreeToTerms = false;
   bool _obscureText = true;
   bool _isLoading = false;
+  String? _deviceId;
 
   // Form controllers
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _nicController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -126,12 +129,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
       print('NIC: ${_nicController.text}');
       print('Username: ${_usernameController.text}');
 
+      if (_deviceId == null) {
+        _showCustomSnackBar(context, 'Device initialization failed. Please try again.', false);
+        return;
+      }
+
       final result = await _apiService.registerUser(
         name: _nameController.text,
         email: _emailController.text,
         nicNumber: _nicController.text,
         username: _usernameController.text,
         password: _passwordController.text,
+        phoneNumber: _phoneController.text,
+        deviceId: _deviceId!,
         address: _addressController.text,
         country: _countryController.text,
       );
@@ -186,10 +196,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _initializeOneSignal();
+  }
+
+  Future<void> _initializeOneSignal() async {
+    // Get the device state
+    final deviceId = await OneSignal.User.pushSubscription.id;
+    setState(() {
+      _deviceId = deviceId;
+    });
+  }
+
+  @override
   void dispose() {
     // Dispose controllers when the widget is removed
     _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _nicController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
@@ -283,6 +308,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
                               .hasMatch(value)) {
                             return 'Please enter a valid email';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _phoneController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Phone Number',
+                          hintStyle: const TextStyle(color: Colors.white70),
+                          filled: true,
+                          fillColor: AppTheme.textFieldColor,
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              borderSide: BorderSide.none),
+                          prefixIcon: const Icon(
+                            Icons.phone,
+                            color: Colors.white,
+                          ),
+                          errorStyle: const TextStyle(color: Colors.amber),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your phone number';
+                          }
+                          if (!RegExp(r'^[0-9]{10}$').hasMatch(value)) {
+                            return 'Please enter a valid 10-digit phone number';
                           }
                           return null;
                         },

@@ -36,6 +36,8 @@ class UserApiService {
     required String nicNumber,
     required String username,
     required String password,
+    required String phoneNumber,
+    required String deviceId,
     String? address,
     String? country,
   }) async {
@@ -49,6 +51,8 @@ class UserApiService {
           'nic_number': nicNumber,
           'username': username,
           'password': password,
+          'phone_number': phoneNumber,
+          'device_id': deviceId,
           'address': address,
           'country': country,
         }),
