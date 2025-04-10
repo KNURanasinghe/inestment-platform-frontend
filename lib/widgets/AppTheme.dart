@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:investment_plan_app/screens/SetPinNavigator.dart';
 
 class AppTheme {
   static const Color backgroundColor = Color(0xFF1E1A4D);
@@ -91,7 +92,10 @@ class AppTheme {
             Navigator.pushReplacementNamed(context, '/deposit');
             break;
           case 2:
-            Navigator.pushReplacementNamed(context, '/withdraw');
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const SetPinNavigator()),
+            );
             break;
           case 3:
             Navigator.pushReplacementNamed(context, '/history');

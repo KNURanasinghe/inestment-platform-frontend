@@ -1,0 +1,2 @@
+F:/inestment-platform-frontend/android/app/.cxx/Debug/531r2r1x/x86/CMakeFiles/edit_cache.dir
+F:/inestment-platform-frontend/android/app/.cxx/Debug/531r2r1x/x86/CMakeFiles/rebuild_cache.dir
