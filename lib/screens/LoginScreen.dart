@@ -43,18 +43,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result['success']) {
         // Login successful, navigate to HomeScreen
-        final isPayed = await _apiService.getPaymentStatus(result['userId']);
-        if (isPayed == true) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-          );
-        }
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
       } else {
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(

@@ -27,8 +27,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _countryController = TextEditingController();
+  final TextEditingController _refController = TextEditingController();
 
-  // Form key for validation
+  // Form key for validation_refController
   final _formKey = GlobalKey<FormState>();
 
   // Create instance of API service
@@ -130,21 +131,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
       print('Username: ${_usernameController.text}');
 
       if (_deviceId == null) {
-        _showCustomSnackBar(context, 'Device initialization failed. Please try again.', false);
+        _showCustomSnackBar(
+            context, 'Device initialization failed. Please try again.', false);
         return;
       }
 
       final result = await _apiService.registerUser(
-        name: _nameController.text,
-        email: _emailController.text,
-        nicNumber: _nicController.text,
-        username: _usernameController.text,
-        password: _passwordController.text,
-        phoneNumber: _phoneController.text,
-        deviceId: _deviceId!,
-        address: _addressController.text,
-        country: _countryController.text,
-      );
+          name: _nameController.text,
+          email: _emailController.text,
+          nicNumber: _nicController.text,
+          username: _usernameController.text,
+          password: _passwordController.text,
+          phoneNumber: _phoneController.text,
+          deviceId: _deviceId!,
+          address: _addressController.text,
+          country: _countryController.text,
+          refcode: _refController.text);
 
       setState(() {
         _isLoading = false;
@@ -161,14 +163,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
         // Add a small delay to allow the user to see the success message
         Future.delayed(const Duration(milliseconds: 1500), () {
-          if (isPayed == true) {
-            // User has already paid, navigate to home page
-            Navigator.pushReplacementNamed(context, '/home');
-          } else {
-            // User has not paid, navigate to payment page
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const WelcomeScreen()));
-          }
+          // User has already paid, navigate to home page
+          Navigator.pushReplacementNamed(context, '/home');
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const WelcomeScreen()));
         });
       } else {
         // Registration failed
@@ -203,7 +201,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   Future<void> _initializeOneSignal() async {
     // Get the device state
-    final deviceId = await OneSignal.User.pushSubscription.id;
+    final deviceId = OneSignal.User.pushSubscription.id;
     setState(() {
       _deviceId = deviceId;
     });
@@ -470,6 +468,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             color: Colors.white,
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 5),
+                      TextFormField(
+                        controller: _refController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'referral code',
+                          hintStyle: const TextStyle(color: Colors.white70),
+                          filled: true,
+                          fillColor: AppTheme.textFieldColor,
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              borderSide: BorderSide.none),
+                          prefixIcon: const Icon(
+                            Icons.credit_card_outlined,
+                            color: Colors.white,
+                          ),
+                          errorStyle: const TextStyle(color: Colors.amber),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your NIC number';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 5),
                       Row(

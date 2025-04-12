@@ -40,6 +40,7 @@ class UserApiService {
     required String deviceId,
     String? address,
     String? country,
+    String? refcode,
   }) async {
     try {
       final response = await http.post(
@@ -55,6 +56,7 @@ class UserApiService {
           'device_id': deviceId,
           'address': address,
           'country': country,
+          'ref_code': refcode,
         }),
       );
 
@@ -146,7 +148,7 @@ class UserApiService {
 
       final responseData = jsonDecode(response.body);
       print('Response data: $responseData');
-      print('Response status code: ${responseData['pin']}');
+      print('Response pin code: ${responseData['pin']}');
       if (response.statusCode == 200) {
         return {
           'success': true,
@@ -203,6 +205,42 @@ class UserApiService {
         };
       }
     } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Add this method to your UserApiService class
+  Future<Map<String, dynamic>> updatePaymentStatus(
+      int userId, bool isPayed) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/api/users/$userId/payment-status'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'isPayed': isPayed,
+        }),
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message':
+              responseData['message'] ?? 'Payment status updated successfully',
+        };
+      } else {
+        return {
+          'success': false,
+          'message':
+              responseData['message'] ?? 'Failed to update payment status',
+        };
+      }
+    } catch (e) {
+      print('Network error updating payment status: ${e.toString()}');
       return {
         'success': false,
         'message': 'Network error: ${e.toString()}',

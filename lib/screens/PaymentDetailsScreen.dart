@@ -10,8 +10,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class PaymentDetailsScreen extends StatefulWidget {
   final double? totalAmount;
+  final String? purpose;
 
-  const PaymentDetailsScreen({super.key, this.totalAmount});
+  const PaymentDetailsScreen({super.key, this.totalAmount, this.purpose});
 
   @override
   State<PaymentDetailsScreen> createState() => _PaymentDetailsScreenState();
@@ -20,32 +21,122 @@ class PaymentDetailsScreen extends StatefulWidget {
 class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
   final DepositService _depositService = DepositService(
     // Update with your API base URL
-    baseUrl: 'http://145.223.21.62:5021', //TODO: Update with your API base URL
+    baseUrl: 'http://145.223.21.62:5021',
+  );
+
+  final UserApiService _userApiService = UserApiService(
+    baseUrl: 'http://145.223.21.62:5021',
   );
 
   File? _selectedImage;
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
-  int _userId =
-      1; // Default user ID, you might want to get this from SharedPreferences
+  int _userId = 0;
+  bool _isPayed = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUserId();
+    _loadUserData();
   }
 
-  Future<void> _loadUserId() async {
+  Future<void> _loadUserData() async {
     try {
       final uId = await UserApiService.getUserId();
-      setState(() {
-        _userId = uId ?? 0; // Default to 1 if not found
-      });
+
+      if (uId != null && uId > 0) {
+        setState(() {
+          _userId = uId;
+        });
+
+        // Fetch user profile to get payment status
+        final userProfileResponse =
+            await _userApiService.getUserProfile(_userId);
+        if (userProfileResponse['success']) {
+          setState(() {
+            _isPayed = userProfileResponse['userData']['is_payed'] ?? false;
+          });
+          print('User payment status loaded: $_isPayed');
+        }
+      } else {
+        print('Invalid user ID: $uId');
+        _showCustomSnackBar(context, 'Error loading user data', false);
+      }
     } catch (e) {
-      print('Error loading user ID: $e');
-      // Continue with default user ID
+      print('Error loading user data: $e');
+      _showCustomSnackBar(
+          context, 'Error loading user data: ${e.toString()}', false);
     }
+  }
+
+  void _showCustomSnackBar(
+      BuildContext context, String message, bool isSuccess) {
+    // Get the ScaffoldMessengerState
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    // Clear any existing SnackBars
+    scaffoldMessenger.clearSnackBars();
+
+    // Show the SnackBar with the gradient wrapper
+    scaffoldMessenger.showSnackBar(
+      SnackBar(
+        content: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isSuccess
+                  ? [
+                      const Color(0xFF4776E6),
+                      const Color(0xFF8E54E9)
+                    ] // Success gradient - blue to purple
+                  : [
+                      const Color(0xFFFF416C),
+                      const Color(0xFFFF4B2B)
+                    ], // Error gradient - red to orange
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                blurRadius: 8,
+                color: Colors.black.withOpacity(0.2),
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                Icon(
+                  isSuccess ? Icons.check_circle : Icons.error_outline,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(15),
+        duration: const Duration(seconds: 3),
+        padding: EdgeInsets.zero,
+      ),
+    );
   }
 
   Future<void> _pickImage() async {
@@ -68,6 +159,42 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
         _errorMessage = 'Error selecting image: ${e.toString()}';
       });
       print('Error picking image: $e');
+      _showCustomSnackBar(context, 'Error selecting image', false);
+    }
+  }
+
+  Future<void> _updatePaymentStatus() async {
+    try {
+      // Check if this is the first coin deposit and user is not yet paid
+      if (widget.purpose == 'buy_coin' && !_isPayed) {
+        print('Updating user payment status to paid');
+
+        // Call API to update payment status
+        final updateResponse =
+            await _userApiService.updatePaymentStatus(_userId, true);
+
+        if (updateResponse['success']) {
+          print('Payment status updated successfully');
+          setState(() {
+            _isPayed = true;
+          });
+
+          // Update the shared preferences or other local storage if needed
+          final prefs = await SharedPreferences.getInstance();
+          // You might want to store this in shared preferences if you use it elsewhere
+          await prefs.setBool('is_payed', true);
+
+          return;
+        } else {
+          print(
+              'Failed to update payment status: ${updateResponse['message']}');
+          throw Exception(
+              'Failed to update payment status: ${updateResponse['message']}');
+        }
+      }
+    } catch (e) {
+      print('Error updating payment status: $e');
+      rethrow; // Rethrow to be caught by the calling function
     }
   }
 
@@ -77,6 +204,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
       setState(() {
         _errorMessage = 'Please select a deposit slip image';
       });
+      _showCustomSnackBar(context, 'Please select a deposit slip image', false);
       return;
     }
 
@@ -85,6 +213,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
       setState(() {
         _errorMessage = 'Invalid amount';
       });
+      _showCustomSnackBar(context, 'Invalid amount', false);
       return;
     }
 
@@ -95,12 +224,21 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
     });
 
     try {
+      print('purpose: ${widget.purpose}');
+
       // Call deposit service to create deposit
       final response = await _depositService.createDeposit(
         userId: _userId,
         amount: widget.totalAmount!,
         imageFile: _selectedImage!,
+        purpose: widget.purpose!,
       );
+
+      // If this is a coin deposit and user hasn't paid yet, update payment status
+      if (widget.purpose == 'buy_coin' && !_isPayed) {
+        await _updatePaymentStatus();
+        print('Payment status updated to paid');
+      }
 
       setState(() {
         _isLoading = false;
@@ -134,6 +272,16 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
                 "Your deposit is in pending status.",
                 style: TextStyle(color: Colors.white70, fontSize: 12),
               ),
+              if (widget.purpose == 'buy_coin' && !_isPayed) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  "Your account has been upgraded to access investment features.",
+                  style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -143,7 +291,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
                     context,
                     MaterialPageRoute(
                         builder: (context) =>
-                            const DepositScreen())); // Go back to previous screen
+                            const DepositScreen())); // Go back to deposit screen
               },
               child: const Text("OK", style: TextStyle(color: Colors.blue)),
             ),
@@ -152,10 +300,12 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
       );
     } catch (e) {
       setState(() {
+        print('error ${e.toString()}');
         _isLoading = false;
         _errorMessage = 'Error submitting deposit: ${e.toString()}';
       });
       print('Error creating deposit: $e');
+      _showCustomSnackBar(context, 'Error submitting deposit', false);
     }
   }
 
@@ -207,7 +357,28 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 20),
+
+                  // Display payment purpose
+                  if (widget.purpose != null) ...[
+                    Text("Payment Purpose", style: AppTheme.textStyleBold),
+                    Container(
+                      width: width,
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: AppTheme.boxDecoration(),
+                      child: Text(
+                        widget.purpose == 'buy_coin'
+                            ? "Buy Coins"
+                            : widget.purpose == 'investment'
+                                ? "Investment Deposit"
+                                : widget.purpose ?? "",
+                        style: AppTheme.textStyleRegular,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
                   Text("Total Payment Amount", style: AppTheme.textStyleBold),
                   Container(
                     width: width,
@@ -309,6 +480,48 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
                       ),
                     ),
 
+                  // First time coin payment note
+                  if (widget.purpose == 'buy_coin' && !_isPayed)
+                    Container(
+                      width: width,
+                      margin: const EdgeInsets.only(top: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF4776E6).withOpacity(0.2),
+                            const Color(0xFF8E54E9).withOpacity(0.2),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFF8E54E9).withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: Colors.blue[300],
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              "This is your first coin purchase. Upon successful payment, you'll gain access to investment features.",
+                              style: TextStyle(
+                                color: Colors.blue[100],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   const SizedBox(height: 30),
 
                   // Upload button
@@ -382,3 +595,38 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
     );
   }
 }
+
+// Add this method to your UserApiService class
+/*
+Future<Map<String, dynamic>> updatePaymentStatus(int userId, bool isPayed) async {
+  try {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/api/users/$userId/payment-status'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'is_payed': isPayed,
+      }),
+    );
+
+    final responseData = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return {
+        'success': true,
+        'message': responseData['message'] ?? 'Payment status updated successfully',
+      };
+    } else {
+      return {
+        'success': false,
+        'message': responseData['message'] ?? 'Failed to update payment status',
+      };
+    }
+  } catch (e) {
+    print('Network error updating payment status: ${e.toString()}');
+    return {
+      'success': false,
+      'message': 'Network error: ${e.toString()}',
+    };
+  }
+}
+*/

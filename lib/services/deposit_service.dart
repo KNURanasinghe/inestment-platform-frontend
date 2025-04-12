@@ -3,10 +3,6 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
-import 'dart:io';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
-
 class Deposit {
   final int? id;
   final String transactionId;
@@ -15,7 +11,8 @@ class Deposit {
   final String? imagePath;
   final bool isPending;
   final DateTime createdAt;
-  final String? username; // Added to handle username if present
+  final String? username;
+  final String purpose; // New field for purpose
 
   Deposit({
     this.id,
@@ -26,26 +23,21 @@ class Deposit {
     required this.isPending,
     required this.createdAt,
     this.username,
+    this.purpose = 'investment', // Default to investment
   });
 
   factory Deposit.fromJson(Map<String, dynamic> json) {
-    // Print json for debugging
-    print('Parsing deposit: $json');
-
     return Deposit(
       id: json['id'],
       transactionId: json['transaction_id'] ?? '',
-      // Default to 0 if user_id is null
       userId: json['user_id'] ?? 0,
-      // Handle different numeric formats
       amount: _parseAmount(json['amount']),
       imagePath: json['image_path'],
-      // Handle both number (1/0) and boolean values
       isPending: json['is_pending'] == 1 || json['is_pending'] == true,
-      // Handle date parsing safely
       createdAt: DateTime.parse(
           json['created_at'] ?? DateTime.now().toIso8601String()),
       username: json['username'],
+      purpose: json['purpose'] ?? 'investment', // Add purpose parsing
     );
   }
 
@@ -74,6 +66,7 @@ class Deposit {
       'is_pending': isPending,
       'created_at': createdAt.toIso8601String(),
       'username': username,
+      'purpose': purpose,
     };
   }
 }
@@ -82,11 +75,13 @@ class DepositResponse {
   final String message;
   final int? depositId;
   final String? transactionId;
+  final String? purpose;
 
   DepositResponse({
     required this.message,
     this.depositId,
     this.transactionId,
+    this.purpose,
   });
 
   factory DepositResponse.fromJson(Map<String, dynamic> json) {
@@ -94,6 +89,7 @@ class DepositResponse {
       message: json['message'] ?? 'Operation completed',
       depositId: json['depositId'],
       transactionId: json['transactionId'],
+      purpose: json['purpose'],
     );
   }
 }
@@ -103,14 +99,16 @@ class DepositService {
 
   DepositService({required this.baseUrl});
 
-  // Create a new deposit
+  // Create a new deposit with purpose
   Future<DepositResponse> createDeposit({
     required int userId,
     required double amount,
     required File imageFile,
+    String purpose = 'investment', // Default to investment
   }) async {
     try {
-      print('Creating deposit: userId=$userId, amount=$amount');
+      print(
+          'Creating deposit: userId=$userId, amount=$amount, purpose=$purpose');
       final uri = Uri.parse('$baseUrl/api/deposits');
 
       var request = http.MultipartRequest('POST', uri);
@@ -118,6 +116,7 @@ class DepositService {
       // Add text fields
       request.fields['userId'] = userId.toString();
       request.fields['amount'] = amount.toString();
+      request.fields['purpose'] = purpose;
 
       // Add file
       String fileName = imageFile.path.split('/').last;
@@ -161,58 +160,8 @@ class DepositService {
     }
   }
 
-  // Get all deposits
-  Future<List<Deposit>> getAllDeposits() async {
-    try {
-      print('Fetching all deposits from $baseUrl/api/deposits');
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/deposits'),
-      );
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final List<dynamic> depositsList = data['deposits'];
-        return depositsList.map((json) => Deposit.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to load deposits: ${response.body}');
-      }
-    } catch (e) {
-      print('Error getting deposits: $e');
-      throw Exception('Error getting deposits: $e');
-    }
-  }
-
-  // Get pending deposits
-  Future<List<Deposit>> getPendingDeposits() async {
-    try {
-      print('Fetching pending deposits from $baseUrl/api/deposits/pending');
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/deposits/pending'),
-      );
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final List<dynamic> pendingDepositsList = data['pendingDeposits'];
-        return pendingDepositsList
-            .map((json) => Deposit.fromJson(json))
-            .toList();
-      } else {
-        throw Exception('Failed to load pending deposits: ${response.body}');
-      }
-    } catch (e) {
-      print('Error getting pending deposits: $e');
-      throw Exception('Error getting pending deposits: $e');
-    }
-  }
-
-  // Get user deposits
-  Future<List<Deposit>> getUserDeposits(int userId) async {
+  // Get user deposits with purpose filtering
+  Future<List<Deposit>> getUserDeposits(int userId, {String? purpose}) async {
     try {
       final url = '$baseUrl/api/users/$userId/deposits';
       print('Fetching user deposits from $url');
@@ -231,8 +180,11 @@ class DepositService {
         final List<dynamic> userDepositsList = data['userDeposits'];
         print('User deposits list length: ${userDepositsList.length}');
 
-        final deposits =
-            userDepositsList.map((item) => Deposit.fromJson(item)).toList();
+        final deposits = userDepositsList
+            .map((item) => Deposit.fromJson(item))
+            .where((deposit) => purpose == null || deposit.purpose == purpose)
+            .toList();
+
         print('Parsed ${deposits.length} deposits');
 
         return deposits;
