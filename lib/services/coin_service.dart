@@ -165,6 +165,42 @@ class CoinService {
     }
   }
 
+  Future<Map<String, dynamic>> getUserCoins(int userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/user/$userId/coins'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success']) {
+          return {
+            'success': true,
+            'coinData': UserCoinData.fromJson(responseData['data']),
+          };
+        } else {
+          return {
+            'success': false,
+            'message': responseData['message'] ?? 'Failed to get user coins',
+          };
+        }
+      } else {
+        return {
+          'success': false,
+          'message': 'Server error: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+      };
+    }
+  }
+
   // Transfer coins to another user
   Future<Map<String, dynamic>> transferCoins({
     required int senderId,
@@ -205,5 +241,27 @@ class CoinService {
         'message': 'Error transferring coins: $e',
       };
     }
+  }
+}
+
+class UserCoinData {
+  final double coinCount;
+  final double pendingCoins;
+  final DateTime lastUpdated;
+
+  UserCoinData({
+    required this.coinCount,
+    required this.pendingCoins,
+    required this.lastUpdated,
+  });
+
+  factory UserCoinData.fromJson(Map<String, dynamic> json) {
+    return UserCoinData(
+      coinCount: json['coinCount']?.toDouble() ?? 0.0,
+      pendingCoins: json['pendingCoins']?.toDouble() ?? 0.0,
+      lastUpdated: json['lastUpdated'] != null
+          ? DateTime.parse(json['lastUpdated'])
+          : DateTime.now(),
+    );
   }
 }

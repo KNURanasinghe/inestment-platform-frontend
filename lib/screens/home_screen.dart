@@ -1,3 +1,7 @@
+// ignore_for_file: prefer_const_literals_to_create_immutables, prefer_const_constructors
+
+import 'dart:async' show TimeoutException, Timer;
+
 import 'package:flutter/material.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
 import 'package:investment_plan_app/services/user_service.dart';
@@ -14,6 +18,25 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final int _currentIndex = 0;
+  double _userCoinCount = 0.0;
+  double _userCoinValueLKR = 0.0;
+  bool _isLoadingUserCoins = true;
+  String _userCoinsError = '';
+
+  // Add a page controller to control the PageView
+  final PageController _pageController = PageController();
+
+  // Add a PageController for the auto-scrolling PageView
+  final PageController _autoScrollController = PageController();
+
+  // Add a Timer for auto-scrolling
+  Timer? _autoScrollTimer;
+
+  // Current page for auto-scrolling
+  int _autoScrollPage = 0;
+
+  // Add a variable to track the current page index for the slide indicators
+  int _currentPage = 0;
 
   String username = "User";
   bool _isLoading = true;
@@ -50,16 +73,72 @@ class _HomeScreenState extends State<HomeScreen> {
     baseUrl: 'http://145.223.21.62:5021',
   );
 
-  final List<String> imageUrls = [
-    'assets/home_bg.png',
-    'assets/home_bg.png',
-    'assets/home_bg.png',
+  // Slidable container text contents (reduced to 1)
+  final List<String> slideTexts = [
+    'Track your earnings and referrals easily',
   ];
+
+  // Text editing controllers for the slidable text inputs (reduced to 1)
+  final List<TextEditingController> _textControllers = [
+    TextEditingController(text: 'Track your earnings and referrals easily'),
+  ];
+
+  @override
+  void dispose() {
+    // Dispose all text controllers
+    for (var controller in _textControllers) {
+      controller.dispose();
+    }
+    // Dispose the page controllers
+    _pageController.dispose();
+    _autoScrollController.dispose();
+    // Cancel the auto-scroll timer
+    _autoScrollTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
+    // Initialize with default values to prevent loading indicators
+    _userCoinCount = 0.0;
+    _userCoinValueLKR = 0.0;
+    _isLoadingUserCoins = false;
+
     _loadAllData();
+
+    // Add listener to page controller to update current page index
+    _pageController.addListener(() {
+      int page = _pageController.page?.round() ?? 0;
+      if (_currentPage != page) {
+        setState(() {
+          _currentPage = page;
+        });
+      }
+    });
+
+    // Start auto-scrolling after the first frame is rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startAutoScrolling();
+    });
+  }
+
+  // Start auto-scrolling
+  void _startAutoScrolling() {
+    // Cancel any existing timer to prevent duplicates
+    _autoScrollTimer?.cancel();
+    _autoScrollTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (_autoScrollController.hasClients && mounted) {
+        print('Auto-scrolling to page: ${(_autoScrollPage + 1) % 10}');
+        _autoScrollController.animateToPage(
+          (_autoScrollPage + 1) % 10,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      } else {
+        print('PageView not mounted or widget disposed');
+      }
+    });
   }
 
   Future<void> _loadAllData() async {
@@ -70,7 +149,15 @@ class _HomeScreenState extends State<HomeScreen> {
         _loadInvestmentProfits(),
         _loadReferrals(),
       ]);
+      await _loadUserCoins();
       _calculateTotalIncome();
+
+      // Force refresh the UI
+      if (mounted) {
+        setState(() {
+          // Just to trigger a rebuild
+        });
+      }
     }
   }
 
@@ -214,6 +301,138 @@ class _HomeScreenState extends State<HomeScreen> {
     await _loadAllData();
   }
 
+  Future<void> _loadUserCoins() async {
+    setState(() {
+      _isLoadingUserCoins = true;
+      _userCoinsError = '';
+    });
+
+    try {
+      // Add a timeout to prevent indefinite loading
+      final response = await _coinService
+          .getUserCoins(_userId)
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+        throw TimeoutException('Connection timed out. Please try again.');
+      });
+
+      if (response['success']) {
+        setState(() {
+          _userCoinCount = response['coinData'].coinCount ?? 0.0;
+          _userCoinValueLKR = _userCoinCount * _coinValue;
+          _isLoadingUserCoins = false;
+        });
+      } else {
+        setState(() {
+          _userCoinsError = response['message'] ?? 'Failed to load user coins';
+          _isLoadingUserCoins = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _userCoinsError = e is TimeoutException
+            ? 'Connection timed out'
+            : 'Error loading user coins';
+        _isLoadingUserCoins = false;
+      });
+      print('Error loading user coins: $e');
+    }
+  }
+
+  // Build dot indicator widget
+  Widget _buildDotIndicator(int index) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: const EdgeInsets.symmetric(horizontal: 5),
+      height: 8,
+      width: 8,
+      decoration: BoxDecoration(
+        color: _currentPage == index
+            ? Colors.white
+            : Colors.white.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(4),
+      ),
+    );
+  }
+
+  // Define the reusable container widget for auto-scrolling
+  Widget _buildAutoScrollContainer(int index) {
+    return Container(
+      width: 150, // Fixed width for each container
+      margin: const EdgeInsets.symmetric(
+          horizontal: 8.0, vertical: 5.0), // Reduced vertical margin
+      padding: const EdgeInsets.all(8.0), // Reduced padding
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.red[900]!.withOpacity(0.8), // Deep red
+            Color(0xFFFFD700).withOpacity(0.9), // Golden yellow
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          'Item ${index + 1}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14, // Reduced font size
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _userCoinInfoWidget() {
+    // Directly return the content without checking loading state
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const Text(
+          'T E T H E R',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.monetization_on, color: Colors.amber, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              '${_userCoinCount.toStringAsFixed(2)} Coins',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Value: LKR ${_userCoinValueLKR.toStringAsFixed(2)}',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 16,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     double width = MediaQuery.of(context).size.width;
@@ -221,7 +440,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      // Apply global background color
       appBar: AppBar(
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -241,15 +459,19 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 // Navigate to profile screen
               },
-              child: const CircleAvatar(
+              child: CircleAvatar(
                 radius: 20,
-                backgroundImage: AssetImage('assets/user_profile.jpg'),
+                backgroundColor: Colors.purple.withOpacity(0.5),
+                child: const Icon(
+                  Icons.person,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
         ),
         backgroundColor: AppTheme.backgroundColor,
-        elevation: 0, // No shadow
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
@@ -257,6 +479,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+<<<<<<< Updated upstream
       body: Column(
         children: [
           Expanded(
@@ -366,6 +589,489 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         const SizedBox(height: 10),
 
+=======
+<<<<<<< HEAD
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: Column(
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  AppTheme.appBackground(),
+                  SizedBox(
+                    width: width,
+                    height: height,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: Column(
+                        children: [
+                          // Auto-scrolling horizontal containers
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20.0, vertical: 10.0),
+                            child: Container(
+                              height:
+                                  80, // Reduced height for thinner appearance
+                              child: GestureDetector(
+                                onPanDown: (_) {
+                                  print(
+                                      'User interaction: Pausing auto-scroll');
+                                  _autoScrollTimer?.cancel();
+                                },
+                                onPanEnd: (_) {
+                                  print(
+                                      'User interaction ended: Resuming auto-scroll');
+                                  _startAutoScrolling();
+                                },
+                                child: PageView.builder(
+                                  controller: _autoScrollController,
+                                  itemCount: 10,
+                                  itemBuilder: (context, index) {
+                                    return _buildAutoScrollContainer(index);
+                                  },
+                                  onPageChanged: (index) {
+                                    setState(() {
+                                      _autoScrollPage = index;
+                                      print('Page changed to: $index');
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Slidable containers with PageView
+                          Column(
+                            children: [
+                              SizedBox(
+                                height: 200,
+                                width: width,
+                                child: PageView(
+                                  controller: _pageController,
+                                  onPageChanged: (int page) {
+                                    setState(() {
+                                      _currentPage = page;
+                                    });
+                                  },
+                                  children: [
+                                    // First slide - Coin information
+                                    Container(
+                                      margin: const EdgeInsets.all(16.0),
+                                      padding: const EdgeInsets.all(16.0),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.purple.withOpacity(0.6),
+                                            Colors.blue.withOpacity(0.4),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius:
+                                            BorderRadius.circular(16.0),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.1),
+                                            blurRadius: 10,
+                                            spreadRadius: 2,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Center(
+                                        child: _userCoinInfoWidget(),
+                                      ),
+                                    ),
+
+                                    // Second slide - Editable text
+                                    Container(
+                                      margin: const EdgeInsets.all(16.0),
+                                      padding: const EdgeInsets.all(16.0),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.purple.withOpacity(0.6),
+                                            Colors.blue.withOpacity(0.4),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius:
+                                            BorderRadius.circular(16.0),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.1),
+                                            blurRadius: 10,
+                                            spreadRadius: 2,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Center(
+                                        child: TextField(
+                                          controller: _textControllers[0],
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                          maxLines: 3,
+                                          decoration: InputDecoration(
+                                            border: InputBorder.none,
+                                            hintText: 'Enter slide text',
+                                            hintStyle: TextStyle(
+                                              color:
+                                                  Colors.white.withOpacity(0.7),
+                                            ),
+                                          ),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              slideTexts[0] = value;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Dot indicators for pagination
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 16.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: List.generate(
+                                    2,
+                                    (index) => _buildDotIndicator(index),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          // Golden tape profit container
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 20.0),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 12.0, horizontal: 16.0),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFFFFD700).withOpacity(0.8),
+                                    const Color(0xFFF5DEB3).withOpacity(0.9),
+                                  ],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Flexible(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.trending_up,
+                                          color: Color(0xFF8B4513),
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: const Text(
+                                            'Today\'s Profit',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: Color(0xFF8B4513),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '\$${(_totalIncome * 0.05).toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF8B4513),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Total income container
+                          Container(
+                            height: 150,
+                            decoration: const BoxDecoration(
+                              image: DecorationImage(
+                                image: AssetImage('assets/total_bg.png'),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Text(
+                                        'Your Total Income',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '\$${_totalIncome.toStringAsFixed(2)}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Investment + Referral Income',
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.8),
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Golden tape upcoming store container
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 20.0),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 10.0, horizontal: 16.0),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFFFFD700).withOpacity(0.8),
+                                    const Color(0xFFF5DEB3).withOpacity(0.9),
+                                  ],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Flexible(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.store,
+                                          color: Color(0xFF8B4513),
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: const Text(
+                                            'Upcoming Store',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: Color(0xFF8B4513),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Coming Soon',
+                                    style: TextStyle(
+                                      color: Color(0xFF8B4513),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Current rate container
+                          Padding(
+                            padding: const EdgeInsets.only(
+                                left: 20, right: 20, top: 0, bottom: 20),
+                            child: Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [
+                                    Colors.indigo.withOpacity(0.1),
+                                    Colors.deepPurple.withOpacity(0.1),
+=======
+      body: Column(
+        children: [
+          Expanded(
+            child: Stack(
+              children: [
+                AppTheme.appBackground(),
+                SizedBox(
+                  width: width,
+                  height: height,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          height: 200,
+                          width: width,
+                          child: PageView.builder(
+                            itemCount: imageUrls.length,
+                            itemBuilder: (context, index) {
+                              return Image.asset(imageUrls[index],
+                                  fit: BoxFit.scaleDown);
+                            },
+                          ),
+                        ),
+
+                        //Total income container
+                        Container(
+                          height: 150,
+                          decoration: const BoxDecoration(
+                            image: DecorationImage(
+                              image: AssetImage('assets/total_bg.png'),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      'Your Total Income',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                    Text(
+                                      '\$${_totalIncome.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Investment + Referral Income',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.8),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+>>>>>>> e3f157904bb87078abb133d67bf9913241db058f
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        //current rate container
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              left: 20, right: 20, top: 0, bottom: 20),
+                          child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey[300]!),
+                              gradient: LinearGradient(
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                                colors: [
+                                  Colors.indigo.withOpacity(0.1),
+                                  Colors.deepPurple.withOpacity(0.1),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: _isLoadingCoinValue
+                                  ? _loadingCoinValueWidget(width)
+                                  : _coinValueError.isNotEmpty
+                                      ? _errorCoinValueWidget(
+                                          width, _coinValueError)
+                                      : _infoWidget2(
+                                          'Current Coin Rate',
+                                          '1 Coin = LKR${_coinValue.toStringAsFixed(2)}',
+                                          width),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+<<<<<<< HEAD
+                          // Parallel Containers for profits
+                          Padding(
+                            padding: const EdgeInsets.only(left: 20, right: 20),
+                            child: Row(
+=======
+>>>>>>> Stashed changes
                         //Parallel Containers for profits
                         Padding(
                           padding: const EdgeInsets.only(left: 20, right: 20),
@@ -385,6 +1091,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
+<<<<<<< Updated upstream
                                     ),
                                     borderRadius: BorderRadius.circular(15),
                                   ),
@@ -503,6 +1210,163 @@ class _HomeScreenState extends State<HomeScreen> {
                                           fontWeight: FontWeight.bold,
                                           fontSize: 20),
                                     ),
+=======
+                                    ),
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.show_chart,
+                                            color: Colors.white),
+                                        Expanded(
+                                          child: Center(
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                const Text('Investment Profit',
+                                                    style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 20)),
+                                                Text(
+                                                    '\$${_investmentProfit.toStringAsFixed(2)}',
+                                                    style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold)),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              // Referral income container
+                              Expanded(
+                                child: Container(
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    border:
+                                        Border.all(color: Colors.grey[300]!),
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.blue.withOpacity(0.4),
+                                        Colors.white.withOpacity(0.3),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.people,
+                                            color: Colors.white),
+                                        Expanded(
+                                          child: Center(
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                const Text('Coin Referral',
+                                                    style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 20)),
+                                                Text(
+                                                    '\$${_referralIncome.toStringAsFixed(2)}',
+                                                    style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold)),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 30),
+
+                        // Level 1 Referrals Container
+                        Padding(
+                          padding: const EdgeInsets.only(left: 20, right: 20),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 16),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+>>>>>>> e3f157904bb87078abb133d67bf9913241db058f
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Level 1 Referrals',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20),
+                                    ),
+<<<<<<< HEAD
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(6.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Icon(Icons.show_chart,
+                                              color: Colors.white, size: 16),
+                                          Expanded(
+                                            child: Center(
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  const Text(
+                                                    'Investment Profit',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    '\$${_investmentProfit.toStringAsFixed(2)}',
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 13,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+=======
+>>>>>>> Stashed changes
                                     _isLoadingReferrals
                                         ? const SizedBox(
                                             width: 16,
@@ -510,6 +1374,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                             child: CircularProgressIndicator(
                                               color: Colors.white,
                                               strokeWidth: 2,
+<<<<<<< Updated upstream
+=======
+>>>>>>> e3f157904bb87078abb133d67bf9913241db058f
+>>>>>>> Stashed changes
                                             ),
                                           )
                                         : Text(
@@ -578,6 +1446,72 @@ class _HomeScreenState extends State<HomeScreen> {
                                       return _buildReferralTile(referral);
                                     },
                                   ),
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+                                ),
+                                const SizedBox(width: 10),
+                                // Referral income container
+                                Expanded(
+                                  child: Container(
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      border:
+                                          Border.all(color: Colors.grey[300]!),
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.blue.withOpacity(0.4),
+                                          Colors.white.withOpacity(0.3),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(6.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Icon(Icons.people,
+                                              color: Colors.white, size: 16),
+                                          Expanded(
+                                            child: Center(
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  const Text(
+                                                    'Coin Referral',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    '\$${_referralIncome.toStringAsFixed(2)}',
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 13,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+=======
+>>>>>>> e3f157904bb87078abb133d67bf9913241db058f
+>>>>>>> Stashed changes
                               ],
                             ),
                           ),
@@ -654,12 +1588,12 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                'Investment: \$${referral.totalInvestment?.toStringAsFixed(2) ?? '0.00'}',
+                "Investment: \$${referral.totalInvestment?.toStringAsFixed(2) ?? '0.00'}",
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
               const SizedBox(height: 4),
               Text(
-                'Coins: \$${referral.totalCoinPurchase?.toStringAsFixed(2) ?? '0.00'}',
+                "Coins: \$${referral.totalCoinPurchase?.toStringAsFixed(2) ?? '0.00'}",
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
             ],

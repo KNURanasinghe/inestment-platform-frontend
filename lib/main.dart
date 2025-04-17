@@ -25,7 +25,7 @@ void main() async {
   // Initialize OneSignal
   OneSignal.initialize('0d5f52a7-45de-4bcd-8987-b8b9dedc7509');
   await OneSignal.Notifications.requestPermission(true);
-  
+
   // Check login status before building the app
   bool isLoggedIn = await checkLoginStatus();
   runApp(MyApp(
@@ -57,7 +57,9 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primaryColor: const Color(0xFF2F0D68), // Sets primary color
       ),
-      initialRoute: isLoggedIn ? '/login' : '/signup', // Set the initial screen
+      //initialRoute: isLoggedIn ? '/login' : '/signup', // Set the initial screen
+      home: HomeScreen(),
+
       routes: {
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignUpScreen(),
