@@ -257,346 +257,341 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        child: Column(
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  AppTheme.appBackground(),
-                  SizedBox(
-                    width: width,
-                    height: height,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: 200,
-                            width: width,
-                            child: PageView.builder(
-                              itemCount: imageUrls.length,
-                              itemBuilder: (context, index) {
-                                return Image.asset(imageUrls[index],
-                                    fit: BoxFit.scaleDown);
-                              },
+      body: Column(
+        children: [
+          Expanded(
+            child: Stack(
+              children: [
+                AppTheme.appBackground(),
+                SizedBox(
+                  width: width,
+                  height: height,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          height: 200,
+                          width: width,
+                          child: PageView.builder(
+                            itemCount: imageUrls.length,
+                            itemBuilder: (context, index) {
+                              return Image.asset(imageUrls[index],
+                                  fit: BoxFit.scaleDown);
+                            },
+                          ),
+                        ),
+
+                        //Total income container
+                        Container(
+                          height: 150,
+                          decoration: const BoxDecoration(
+                            image: DecorationImage(
+                              image: AssetImage('assets/total_bg.png'),
+                              fit: BoxFit.cover,
                             ),
                           ),
-
-                          //Total income container
-                          Container(
-                            height: 150,
-                            decoration: const BoxDecoration(
-                              image: DecorationImage(
-                                image: AssetImage('assets/total_bg.png'),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Text(
-                                        'Your Total Income',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 20,
-                                        ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      'Your Total Income',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20,
                                       ),
-                                      Text(
-                                        '\$${_totalIncome.toStringAsFixed(2)}',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                    ),
+                                    Text(
+                                      '\$${_totalIncome.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Investment + Referral Income',
-                                        style: TextStyle(
-                                          color: Colors.white.withOpacity(0.8),
-                                          fontSize: 14,
-                                        ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Investment + Referral Income',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.8),
+                                        fontSize: 14,
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          //current rate container
-                          Padding(
-                            padding: const EdgeInsets.only(
-                                left: 20, right: 20, top: 0, bottom: 20),
-                            child: Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey[300]!),
-                                gradient: LinearGradient(
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                  colors: [
-                                    Colors.indigo.withOpacity(0.1),
-                                    Colors.deepPurple.withOpacity(0.1),
+                                    ),
                                   ],
                                 ),
-                                borderRadius: BorderRadius.circular(15),
                               ),
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: _isLoadingCoinValue
-                                    ? _loadingCoinValueWidget(width)
-                                    : _coinValueError.isNotEmpty
-                                        ? _errorCoinValueWidget(
-                                            width, _coinValueError)
-                                        : _infoWidget2(
-                                            'Current Coin Rate',
-                                            '1 Coin = LKR${_coinValue.toStringAsFixed(2)}',
-                                            width),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        //current rate container
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              left: 20, right: 20, top: 0, bottom: 20),
+                          child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey[300]!),
+                              gradient: LinearGradient(
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                                colors: [
+                                  Colors.indigo.withOpacity(0.1),
+                                  Colors.deepPurple.withOpacity(0.1),
+                                ],
                               ),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: _isLoadingCoinValue
+                                  ? _loadingCoinValueWidget(width)
+                                  : _coinValueError.isNotEmpty
+                                      ? _errorCoinValueWidget(
+                                          width, _coinValueError)
+                                      : _infoWidget2(
+                                          'Current Coin Rate',
+                                          '1 Coin = LKR${_coinValue.toStringAsFixed(2)}',
+                                          width),
                             ),
                           ),
+                        ),
 
-                          const SizedBox(height: 10),
+                        const SizedBox(height: 10),
 
-                          //Parallel Containers for profits
-                          Padding(
-                            padding: const EdgeInsets.only(left: 20, right: 20),
-                            child: Row(
+                        //Parallel Containers for profits
+                        Padding(
+                          padding: const EdgeInsets.only(left: 20, right: 20),
+                          child: Row(
+                            children: [
+                              // Investment profit container
+                              Expanded(
+                                child: Container(
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    border:
+                                        Border.all(color: Colors.grey[300]!),
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.blue.withOpacity(0.4),
+                                        Colors.white.withOpacity(0.3),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.show_chart,
+                                            color: Colors.white),
+                                        Expanded(
+                                          child: Center(
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                const Text('Investment Profit',
+                                                    style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 20)),
+                                                Text(
+                                                    '\$${_investmentProfit.toStringAsFixed(2)}',
+                                                    style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold)),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              // Referral income container
+                              Expanded(
+                                child: Container(
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    border:
+                                        Border.all(color: Colors.grey[300]!),
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.blue.withOpacity(0.4),
+                                        Colors.white.withOpacity(0.3),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.people,
+                                            color: Colors.white),
+                                        Expanded(
+                                          child: Center(
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                const Text('Coin Referral',
+                                                    style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 20)),
+                                                Text(
+                                                    '\$${_referralIncome.toStringAsFixed(2)}',
+                                                    style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold)),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 30),
+
+                        // Level 1 Referrals Container
+                        Padding(
+                          padding: const EdgeInsets.only(left: 20, right: 20),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 16),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Investment profit container
-                                Expanded(
-                                  child: Container(
-                                    height: 120,
-                                    decoration: BoxDecoration(
-                                      border:
-                                          Border.all(color: Colors.grey[300]!),
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.blue.withOpacity(0.4),
-                                          Colors.white.withOpacity(0.3),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(15),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Level 1 Referrals',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20),
                                     ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Icon(Icons.show_chart,
-                                              color: Colors.white),
-                                          Expanded(
-                                            child: Center(
-                                              child: Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  const Text(
-                                                      'Investment Profit',
-                                                      style: TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 20)),
-                                                  Text(
-                                                      '\$${_investmentProfit.toStringAsFixed(2)}',
-                                                      style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontWeight:
-                                                              FontWeight.bold)),
-                                                ],
-                                              ),
+                                    _isLoadingReferrals
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              color: Colors.white,
+                                              strokeWidth: 2,
                                             ),
+                                          )
+                                        : Text(
+                                            '${_directReferrals.length} users',
+                                            style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16),
+                                          ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Referral list
+                                if (_isLoadingReferrals)
+                                  const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(20.0),
+                                      child: Text(
+                                        'Loading your referrals...',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                                  )
+                                else if (_referralsError.isNotEmpty)
+                                  Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(20.0),
+                                      child: Text(
+                                        'Unable to load referrals: $_referralsError',
+                                        style:
+                                            TextStyle(color: Colors.red[300]),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  )
+                                else if (_directReferrals.isEmpty)
+                                  const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(20.0),
+                                      child: Column(
+                                        children: [
+                                          Icon(
+                                            Icons.people_outline,
+                                            color: Colors.white,
+                                            size: 48,
+                                          ),
+                                          SizedBox(height: 16),
+                                          Text(
+                                            'You don\'t have any referrals yet.\nInvite friends to earn commissions!',
+                                            style:
+                                                TextStyle(color: Colors.white),
+                                            textAlign: TextAlign.center,
                                           ),
                                         ],
                                       ),
                                     ),
+                                  )
+                                else
+                                  ListView.builder(
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    itemCount: _directReferrals.length,
+                                    itemBuilder: (context, index) {
+                                      final referral = _directReferrals[index];
+                                      return _buildReferralTile(referral);
+                                    },
                                   ),
-                                ),
-                                const SizedBox(width: 10),
-                                // Referral income container
-                                Expanded(
-                                  child: Container(
-                                    height: 120,
-                                    decoration: BoxDecoration(
-                                      border:
-                                          Border.all(color: Colors.grey[300]!),
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.blue.withOpacity(0.4),
-                                          Colors.white.withOpacity(0.3),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Icon(Icons.people,
-                                              color: Colors.white),
-                                          Expanded(
-                                            child: Center(
-                                              child: Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  const Text('Coin Referral',
-                                                      style: TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 20)),
-                                                  Text(
-                                                      '\$${_referralIncome.toStringAsFixed(2)}',
-                                                      style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontWeight:
-                                                              FontWeight.bold)),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
                               ],
                             ),
                           ),
+                        ),
 
-                          const SizedBox(height: 30),
-
-                          // Level 1 Referrals Container
-                          Padding(
-                            padding: const EdgeInsets.only(left: 20, right: 20),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 16),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey[300]!),
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text(
-                                        'Level 1 Referrals',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 20),
-                                      ),
-                                      _isLoadingReferrals
-                                          ? const SizedBox(
-                                              width: 16,
-                                              height: 16,
-                                              child: CircularProgressIndicator(
-                                                color: Colors.white,
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                          : Text(
-                                              '${_directReferrals.length} users',
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 16),
-                                            ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-
-                                  // Referral list
-                                  if (_isLoadingReferrals)
-                                    const Center(
-                                      child: Padding(
-                                        padding: EdgeInsets.all(20.0),
-                                        child: Text(
-                                          'Loading your referrals...',
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                      ),
-                                    )
-                                  else if (_referralsError.isNotEmpty)
-                                    Center(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(20.0),
-                                        child: Text(
-                                          'Unable to load referrals: $_referralsError',
-                                          style:
-                                              TextStyle(color: Colors.red[300]),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                    )
-                                  else if (_directReferrals.isEmpty)
-                                    const Center(
-                                      child: Padding(
-                                        padding: EdgeInsets.all(20.0),
-                                        child: Column(
-                                          children: [
-                                            Icon(
-                                              Icons.people_outline,
-                                              color: Colors.white,
-                                              size: 48,
-                                            ),
-                                            SizedBox(height: 16),
-                                            Text(
-                                              'You don\'t have any referrals yet.\nInvite friends to earn commissions!',
-                                              style: TextStyle(
-                                                  color: Colors.white),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    ListView.builder(
-                                      shrinkWrap: true,
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      itemCount: _directReferrals.length,
-                                      itemBuilder: (context, index) {
-                                        final referral =
-                                            _directReferrals[index];
-                                        return _buildReferralTile(referral);
-                                      },
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 60),
-                        ],
-                      ),
+                        const SizedBox(height: 60),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       bottomNavigationBar: AppTheme.bottomNavigationBar(context, 0),
     );

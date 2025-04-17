@@ -116,11 +116,12 @@ class UserApiService {
       );
 
       final responseData = jsonDecode(response.body);
-
+      print('Response data : $responseData');
       if (response.statusCode == 200) {
         // Save user ID to shared preferences
+        final userData = responseData['userData'];
         await saveUserId(responseData['userId']);
-        await saveUserRef(responseData['ref_code']);
+        await saveUserRef(userData['ref_code']);
         // Set logged in status
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool(IS_LOGGED_IN_KEY, true);
