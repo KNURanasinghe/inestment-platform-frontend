@@ -1,13 +1,98 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:investment_plan_app/screens/LoginScreen.dart';
+import 'package:investment_plan_app/screens/kyc_verification_dialog.dart';
 import 'package:investment_plan_app/screens/pin_entry_page.dart';
+import 'package:investment_plan_app/services/kyc_service.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
 import 'package:investment_plan_app/screens/DepositFundScreen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 
-class AccountPage extends StatelessWidget {
+import '../services/user_service.dart';
+
+class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
+
+  @override
+  State<AccountPage> createState() => _AccountPageState();
+}
+
+class _AccountPageState extends State<AccountPage> {
+  final KycService _apiService = KycService();
+
+  // KYC status variables
+  bool isLoading = true;
+  String kycStatus = "pending"; // Options: pending, submitted, verified
+  bool isKycVerified = false;
+  String refcode = '';
+  int userid = 0;
+  @override
+  void initState() {
+    super.initState();
+    fetchKYCStatus();
+  }
+
+  Future<void> fetchKYCStatus() async {
+    final refKey = await UserApiService.getUserRef();
+    setState(() {
+      isLoading = true;
+      refcode = refKey!;
+    });
+
+    try {
+      // Get user ID from shared preferences
+
+      final userId = await UserApiService.getUserId();
+
+      if (userId != null) {
+        final response = await _apiService.getKYCStatus(userId);
+
+        if (response['success']) {
+          final data = jsonDecode(response['data']);
+          setState(() {
+            kycStatus = data['status'];
+            isKycVerified = data['isVerified'] ?? false;
+            userid = userId;
+          });
+        }
+      }
+    } catch (e) {
+      print("Error fetching KYC status: $e");
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  void _showVerificationDialog(BuildContext context) async {
+    // Get user ID from shared preferences
+
+    final userId = await UserApiService.getUserId();
+
+    if (userId == null) {
+      _showCustomSnackBar(
+          context, "User not authenticated. Please log in again.", false);
+      return;
+    }
+
+    await showDialog(
+      context: context,
+      builder: (context) => KYCVerificationDialog(
+        userId: userId,
+        onVerificationSubmitted: () {
+          setState(() {
+            kycStatus = "submitted";
+          });
+          _showCustomSnackBar(
+              context, "KYC verification submitted successfully", true);
+          fetchKYCStatus(); // Refresh status
+        },
+      ),
+    );
+  }
 
   // Custom SnackBar method
   void _showCustomSnackBar(
@@ -193,19 +278,56 @@ class AccountPage extends StatelessWidget {
 
   Widget _buildProfileSection() {
     return Container(
-      child: const Row(
+      child: Row(
         children: [
-          CircleAvatar(
+          const CircleAvatar(
             radius: 30,
             backgroundImage: NetworkImage("https://via.placeholder.com/150"),
           ),
-          SizedBox(width: 16),
+          const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Alexander Mitchell",
-                  style: TextStyle(fontSize: 18, color: Colors.white)),
-              Text("ID: 842125", style: TextStyle(color: Colors.grey)),
+              Row(
+                children: [
+                  const Text(
+                    "Alexander Mitchell",
+                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  ),
+                  if (isKycVerified)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green, width: 1),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.verified,
+                              color: Colors.green,
+                              size: 14,
+                            ),
+                            SizedBox(width: 2),
+                            Text(
+                              "Verified",
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              Text("ID: $userid", style: const TextStyle(color: Colors.grey)),
             ],
           ),
         ],
@@ -243,56 +365,101 @@ class AccountPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("Verification Status",
+                    const Text("Verification Status",
                         style: TextStyle(color: Colors.white)),
-                    Text("Pending", style: TextStyle(color: Colors.amber)),
+                    if (isLoading)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.blue),
+                        ),
+                      )
+                    else
+                      Row(
+                        children: [
+                          if (isKycVerified)
+                            const Icon(
+                              Icons.verified,
+                              color: Colors.green,
+                              size: 16,
+                            ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isKycVerified
+                                ? "Verified"
+                                : kycStatus == "submitted"
+                                    ? "Under Review"
+                                    : "Pending",
+                            style: TextStyle(
+                              color: isKycVerified
+                                  ? Colors.green
+                                  : kycStatus == "submitted"
+                                      ? Colors.amber
+                                      : Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                const LinearProgressIndicator(
-                  value: 0.5, // Example progress value
+                LinearProgressIndicator(
+                  value: isKycVerified
+                      ? 1.0
+                      : kycStatus == "submitted"
+                          ? 0.7
+                          : 0.3,
                   backgroundColor: Colors.grey,
-                  color: Colors.blue,
+                  color: isKycVerified
+                      ? Colors.green
+                      : kycStatus == "submitted"
+                          ? Colors.amber
+                          : Colors.blue,
                 ),
                 const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [
-                          Colors.blue, // Left color
-                          Colors.purple, // Right color
-                        ],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                if (!isKycVerified)
+                  SizedBox(
+                    width: double.infinity,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Colors.blue, // Left color
+                            Colors.purple, // Right color
+                          ],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
                         ),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      onPressed: () {
-                        _showCustomSnackBar(context,
-                            "KYC verification process initiated", true);
-                      },
-                      child: const Text(
-                        "Complete Verification",
-                        style: TextStyle(
-                          color: Color.fromARGB(255, 250, 250, 250),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: kycStatus == "submitted"
+                            ? null
+                            : () => _showVerificationDialog(context),
+                        child: Text(
+                          kycStatus == "submitted"
+                              ? "Verification Pending"
+                              : "Complete Verification",
+                          style: const TextStyle(
+                            color: Color.fromARGB(255, 250, 250, 250),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -377,9 +544,9 @@ class AccountPage extends StatelessWidget {
                               0x1AD9D9D9), // #D9D9D9 with 10% opacity
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text(
-                          "TLS 8472910",
-                          style: TextStyle(
+                        child: Text(
+                          refcode,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                           ),

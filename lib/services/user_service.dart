@@ -15,6 +15,7 @@ class UserApiService {
 
   UserApiService({required this.baseUrl});
   static const String USER_ID_KEY = 'user_id';
+  static const String USER_REF_KEY = 'ref_code';
   static const String USER_DATA_KEY = 'user_data';
   static const String IS_LOGGED_IN_KEY = 'is_logged_in';
 
@@ -23,10 +24,20 @@ class UserApiService {
     return await prefs.setInt(USER_ID_KEY, userId);
   }
 
+  static Future<bool> saveUserRef(String refcode) async {
+    final prefs = await SharedPreferences.getInstance();
+    return await prefs.setString(USER_REF_KEY, refcode);
+  }
+
   // Get user ID
   static Future<int?> getUserId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(USER_ID_KEY);
+  }
+
+  static Future<String?> getUserRef() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(USER_REF_KEY);
   }
 
   // Register a new user
@@ -61,10 +72,12 @@ class UserApiService {
       );
 
       final responseData = jsonDecode(response.body);
-
+      print('Response data: $responseData');
       if (response.statusCode == 201) {
+        print('Registration successful: ${responseData['refCode']}');
         // Save user ID to shared preferences
         await saveUserId(responseData['userId']);
+        await saveUserRef(responseData['refCode']);
         return {
           'success': true,
           'message': responseData['message'],
@@ -107,7 +120,7 @@ class UserApiService {
       if (response.statusCode == 200) {
         // Save user ID to shared preferences
         await saveUserId(responseData['userId']);
-
+        await saveUserRef(responseData['ref_code']);
         // Set logged in status
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool(IS_LOGGED_IN_KEY, true);

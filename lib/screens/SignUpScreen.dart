@@ -469,7 +469,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 20),
                       TextFormField(
                         controller: _refController,
                         style: const TextStyle(color: Colors.white),
@@ -487,12 +487,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ),
                           errorStyle: const TextStyle(color: Colors.amber),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your NIC number';
-                          }
-                          return null;
-                        },
                       ),
                       const SizedBox(height: 5),
                       Row(
