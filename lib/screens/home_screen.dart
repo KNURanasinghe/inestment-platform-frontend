@@ -480,6 +480,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
       body: Column(
         children: [
           Expanded(
@@ -590,6 +591,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 10),
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
       body: RefreshIndicator(
         onRefresh: _refreshData,
@@ -1071,6 +1074,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             padding: const EdgeInsets.only(left: 20, right: 20),
                             child: Row(
 =======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                         //Parallel Containers for profits
                         Padding(
@@ -1092,6 +1098,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
                                     ),
                                     borderRadius: BorderRadius.circular(15),
                                   ),
@@ -1198,6 +1207,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+<<<<<<< Updated upstream
                               children: [
                                 Row(
                                   mainAxisAlignment:
@@ -1317,6 +1327,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+=======
+>>>>>>> Stashed changes
 >>>>>>> e3f157904bb87078abb133d67bf9913241db058f
                               children: [
                                 Row(
@@ -1366,6 +1378,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 ],
                                               ),
 =======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                                     _isLoadingReferrals
                                         ? const SizedBox(
@@ -1375,6 +1390,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                               color: Colors.white,
                                               strokeWidth: 2,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> e3f157904bb87078abb133d67bf9913241db058f
+>>>>>>> Stashed changes
 =======
 >>>>>>> e3f157904bb87078abb133d67bf9913241db058f
 >>>>>>> Stashed changes
@@ -1447,7 +1466,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                     },
                                   ),
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                                 ),
                                 const SizedBox(width: 10),
@@ -1511,6 +1533,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
 =======
 >>>>>>> e3f157904bb87078abb133d67bf9913241db058f
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                               ],
                             ),
