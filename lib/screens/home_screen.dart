@@ -496,9 +496,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           // Auto-scrolling horizontal containers
                           Padding(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 20.0, vertical: 10.0),
+                                horizontal: 10.0, vertical: 2.0),
                             child: Container(
-                              height: 120,
+                              height: 70,
                               child: GestureDetector(
                                 onPanDown: (_) {
                                   print(
@@ -721,7 +721,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Padding(
                                   padding: const EdgeInsets.all(16.0),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
                                     mainAxisSize: MainAxisSize.min,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
@@ -729,7 +730,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         'Your Total Income',
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: 18,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
@@ -958,7 +960,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     MainAxisAlignment.center,
                                                 children: [
                                                   const Text(
-                                                    'Coin Referral',
+                                                    'Referral Gain',
                                                     style: TextStyle(
                                                       color: Colors.white,
                                                       fontSize: 14,
