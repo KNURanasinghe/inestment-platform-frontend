@@ -9,8 +9,6 @@ import 'package:investment_plan_app/services/coin_service.dart';
 import 'package:investment_plan_app/services/investment_service.dart';
 import 'package:investment_plan_app/services/referral_service.dart';
 
-import '../services/deposit_service.dart';
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -57,20 +55,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<dynamic> _directReferrals = [];
   bool _isLoadingReferrals = true;
   String _referralsError = '';
-
-// Add these variables to your _HomeScreenState class
-  bool _hasTodayProfit = false;
-  double _todayProfitAmount = 0.0;
-  bool _isLoadingTodayProfit = true;
-  bool _isClaimingProfit = false;
-
-  // Add these variables to your _HomeScreenState class
-  double _totalDepositAmount = 0.0;
-  double _totalInvestmentDeposits = 0.0;
-  double _totalCoinDeposits = 0.0;
-  bool _isLoadingDeposits = true;
-  List<Deposit> _userDeposits = [];
-  final bool _isDropdownOpen = false;
 
   // Services
   final UserApiService _userApiService = UserApiService(
@@ -164,8 +148,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _loadCoinValue(),
         _loadInvestmentProfits(),
         _loadReferrals(),
-        _loadTodayProfit(),
-        _loadUserDeposits(),
       ]);
       await _loadUserCoins();
       _calculateTotalIncome();
@@ -177,296 +159,6 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     }
-  }
-
-// Create a method to format date
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-  }
-
-  Future<void> _loadUserDeposits() async {
-    if (_userId <= 0) return;
-
-    setState(() {
-      _isLoadingDeposits = true;
-    });
-
-    try {
-      // Create deposit service
-      final depositService =
-          DepositService(baseUrl: 'http://145.223.21.62:5021');
-
-      // Get all user deposits that are not pending
-      final deposits = await depositService.getUserDeposits(_userId);
-      final approvedDeposits =
-          deposits.where((deposit) => !deposit.isPending).toList();
-
-      // Calculate total deposit amount
-      double totalAmount = 0.0;
-      double investmentAmount = 0.0;
-      double coinAmount = 0.0;
-
-      for (var deposit in approvedDeposits) {
-        totalAmount += deposit.amount;
-        if (deposit.purpose == 'investment') {
-          investmentAmount += deposit.amount;
-        } else if (deposit.purpose == 'buy_coin') {
-          coinAmount += deposit.amount;
-        }
-      }
-
-      setState(() {
-        _userDeposits = approvedDeposits;
-        _totalDepositAmount = totalAmount;
-        _totalInvestmentDeposits = investmentAmount;
-        _totalCoinDeposits = coinAmount;
-        _isLoadingDeposits = false;
-      });
-
-      print('Loaded user deposits: ${approvedDeposits.length}');
-      print('Total deposit amount: $_totalDepositAmount');
-      print('Investment deposits: $_totalInvestmentDeposits');
-      print('Coin deposits: $_totalCoinDeposits');
-    } catch (e) {
-      setState(() {
-        _isLoadingDeposits = false;
-      });
-      print('Error loading user deposits: $e');
-    }
-  }
-
-// Add this method to check for today's unclaimed profits
-  Future<void> _loadTodayProfit() async {
-    setState(() {
-      _isLoadingTodayProfit = true;
-    });
-
-    try {
-      final response = await _investmentService.getTodayProfits(_userId);
-
-      if (response['success']) {
-        final totalProfit = response['totalProfit'] ?? 0.0;
-        final count = response['count'] ?? 0;
-
-        setState(() {
-          _hasTodayProfit = totalProfit > 0 && count > 0;
-          _todayProfitAmount = totalProfit;
-          _isLoadingTodayProfit = false;
-          print('has today profit $_hasTodayProfit');
-        });
-
-        print(
-            'Today\'s profit loaded: $_todayProfitAmount, Available: $_hasTodayProfit');
-      } else {
-        setState(() {
-          _hasTodayProfit = false;
-          _todayProfitAmount = 0.0;
-          _isLoadingTodayProfit = false;
-        });
-        print('No profits available today or error: ${response['message']}');
-      }
-    } catch (e) {
-      setState(() {
-        _hasTodayProfit = false;
-        _todayProfitAmount = 0.0;
-        _isLoadingTodayProfit = false;
-      });
-      print('Error loading today\'s profit: $e');
-    }
-  }
-
-// Add this method to claim today's profit
-  Future<void> _claimTodayProfit() async {
-    if (_isClaimingProfit) return; // Prevent double-clicking
-
-    setState(() {
-      _isClaimingProfit = true;
-    });
-
-    try {
-      final response = await _investmentService.claimTodayProfits(_userId);
-
-      if (response['success']) {
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Successfully claimed ${response['totalProfit'].toStringAsFixed(2)} LKR'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        // Refresh data
-        await _loadTodayProfit();
-        await _loadUserCoins();
-
-        setState(() {
-          _hasTodayProfit = false;
-        });
-      } else {
-        // Show error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message'] ?? 'Failed to claim profit'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error claiming profit: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      print('Error claiming today\'s profit: $e');
-    } finally {
-      setState(() {
-        _isClaimingProfit = false;
-      });
-    }
-  }
-
-// Create a widget for today's profit container
-  Widget _buildTodayProfitContainer() {
-    if (_isLoadingTodayProfit) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFFFFD700).withOpacity(0.8),
-                const Color(0xFFF5DEB3).withOpacity(0.9),
-              ],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Center(
-            child: SizedBox(
-              height: 24,
-              width: 24,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (!_hasTodayProfit) {
-      // Return nothing if no profit is available
-      return SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.green.withOpacity(0.8),
-              Colors.green.withOpacity(0.6),
-            ],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.monetization_on,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: const Text(
-                          'Today\'s Profit Available!',
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'LKR ${_todayProfitAmount.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isClaimingProfit ? null : _claimTodayProfit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.red.withOpacity(0.5),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                child: _isClaimingProfit
-                    ? SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : Text('CLAIM NOW'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Future<void> _loadUserData() async {
@@ -616,65 +308,33 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      // First try to get the coin balance directly from the API
-      final response = await _coinService.getUserCoinBalance(_userId);
+      // Add a timeout to prevent indefinite loading
+      final response = await _coinService
+          .getUserCoins(_userId)
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+        throw TimeoutException('Connection timed out. Please try again.');
+      });
 
       if (response['success']) {
         setState(() {
-          _userCoinCount = response['balance'] ?? 0.0;
+          _userCoinCount = response['coinData'].coinCount ?? 0.0;
           _userCoinValueLKR = _userCoinCount * _coinValue;
           _isLoadingUserCoins = false;
         });
-        print('User coin balance loaded: $_userCoinCount');
       } else {
-        // If direct method fails, try to get from investment summary
-        if (_investmentSummary != null) {
-          setState(() {
-            _userCoinCount = _investmentSummary!.currentCoinBalance;
-            _userCoinValueLKR = _userCoinCount * _coinValue;
-            _isLoadingUserCoins = false;
-          });
-          print('User coin balance loaded from summary: $_userCoinCount');
-        } else {
-          setState(() {
-            _userCoinsError =
-                response['message'] ?? 'Failed to load user coins';
-            _isLoadingUserCoins = false;
-          });
-          print('Failed to load user coins: $_userCoinsError');
-        }
+        setState(() {
+          _userCoinsError = response['message'] ?? 'Failed to load user coins';
+          _isLoadingUserCoins = false;
+        });
       }
     } catch (e) {
       setState(() {
-        _userCoinsError = 'Error loading user coins';
+        _userCoinsError = e is TimeoutException
+            ? 'Connection timed out'
+            : 'Error loading user coins';
         _isLoadingUserCoins = false;
       });
       print('Error loading user coins: $e');
-    }
-  }
-
-  // Add investment summary object
-  UserInvestmentSummary? _investmentSummary;
-
-  Future<void> _loadInvestmentSummary() async {
-    try {
-      final response = await _coinService.getUserInvestmentSummary(_userId);
-
-      if (response['success']) {
-        setState(() {
-          _investmentSummary = response['summary'];
-          // Update coin count if not already set
-          if (_userCoinCount <= 0) {
-            _userCoinCount = _investmentSummary!.currentCoinBalance;
-            _userCoinValueLKR = _userCoinCount * _coinValue;
-          }
-        });
-        print('Investment summary loaded');
-      } else {
-        print('Failed to load investment summary: ${response['message']}');
-      }
-    } catch (e) {
-      print('Error loading investment summary: $e');
     }
   }
 
@@ -720,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Center(
         child: Text(
-          'Current Coin Rate 1 Coin = LKR${_coinValue.toStringAsFixed(2)}',
+          'Item ${index + 1}',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -731,7 +391,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  _userCoinInfoWidget() {
+  Widget _userCoinInfoWidget() {
+    // Directly return the content without checking loading state
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -749,161 +410,25 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             const Icon(Icons.monetization_on, color: Colors.amber, size: 24),
             const SizedBox(width: 8),
-            _isLoadingUserCoins
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ))
-                : Text(
-                    '${_userCoinCount.toStringAsFixed(2)} Coins',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+            Text(
+              '${_userCoinCount.toStringAsFixed(2)} Coins',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 8),
-        _isLoadingUserCoins
-            ? Text(
-                'Loading value...',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
-                  fontSize: 16,
-                ),
-              )
-            : Text(
-                'Value: LKR ${_userCoinValueLKR.toStringAsFixed(2)}',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: 16,
-                ),
-              ),
+        Text(
+          'Value: LKR ${_userCoinValueLKR.toStringAsFixed(2)}',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 16,
+          ),
+        ),
       ],
-    );
-  }
-
-  // Investment summary widget to show coin deposits and investment deposits
-  Widget _investmentSummaryWidget() {
-    if (_investmentSummary == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.blueGrey.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Center(
-            child: Text(
-              'Investment summary not available',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.indigo.withOpacity(0.7),
-              Colors.purple.withOpacity(0.5),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Investment Summary',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  'Total: LKR${_investmentSummary!.totalDeposits.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-            const Divider(color: Colors.white30),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Investment Deposits:',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-                Text(
-                  'LKR${_investmentSummary!.investmentsTotal.toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Coin Deposits:',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-                Text(
-                  'LKR${_investmentSummary!.coinPurchasesTotal.toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            if (_investmentSummary!.pendingDepositsCount > 0) ...[
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Pending Deposits:',
-                    style: TextStyle(color: Colors.amber, fontSize: 14),
-                  ),
-                  Text(
-                    '${_investmentSummary!.pendingDepositsCount} pending',
-                    style: const TextStyle(color: Colors.amber, fontSize: 14),
-                  ),
-                ],
-              ),
-            ]
-          ],
-        ),
-      ),
     );
   }
 
@@ -972,7 +497,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10.0, vertical: 2.0),
-                            child: SizedBox(
+                            child: Container(
                               height: 70,
                               child: GestureDetector(
                                 onPanDown: (_) {
@@ -1009,150 +534,149 @@ class _HomeScreenState extends State<HomeScreen> {
                                 height: 200,
                                 width: width,
                                 child: PageView(
-                                    controller: _pageController,
-                                    onPageChanged: (int page) {
-                                      setState(() {
-                                        _currentPage = page;
-                                      });
-                                    },
-                                    children: [
-                                      // First slide - Coin information
-                                      Container(
-                                        margin: const EdgeInsets.all(16.0),
-                                        padding: const EdgeInsets.all(16.0),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              Colors.purple.withOpacity(0.6),
-                                              Colors.blue.withOpacity(0.4),
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                          borderRadius:
-                                              BorderRadius.circular(16.0),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color:
-                                                  Colors.black.withOpacity(0.1),
-                                              blurRadius: 10,
-                                              spreadRadius: 2,
-                                            ),
+                                  controller: _pageController,
+                                  onPageChanged: (int page) {
+                                    setState(() {
+                                      _currentPage = page;
+                                    });
+                                  },
+                                  children: [
+                                    // First slide - Coin information
+                                    Container(
+                                      margin: const EdgeInsets.all(16.0),
+                                      padding: const EdgeInsets.all(16.0),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.purple.withOpacity(0.6),
+                                            Colors.blue.withOpacity(0.4),
                                           ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
                                         ),
-                                        child: Center(
-                                          child: _userCoinInfoWidget(),
-                                        ),
+                                        borderRadius:
+                                            BorderRadius.circular(16.0),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.1),
+                                            blurRadius: 10,
+                                            spreadRadius: 2,
+                                          ),
+                                        ],
                                       ),
+                                      child: Center(
+                                        child: _userCoinInfoWidget(),
+                                      ),
+                                    ),
 
-                                      // Second slide - Editable text
-                                      //   Container(
-                                      //     margin: const EdgeInsets.all(16.0),
-                                      //     padding: const EdgeInsets.all(
-                                      //         12.0), // Reduced padding
-                                      //     decoration: BoxDecoration(
-                                      //       gradient: LinearGradient(
-                                      //         colors: [
-                                      //           Colors.purple.withOpacity(0.6),
-                                      //           Colors.blue.withOpacity(0.4),
-                                      //         ],
-                                      //         begin: Alignment.topLeft,
-                                      //         end: Alignment.bottomRight,
-                                      //       ),
-                                      //       borderRadius:
-                                      //           BorderRadius.circular(16.0),
-                                      //       boxShadow: [
-                                      //         BoxShadow(
-                                      //           color:
-                                      //               Colors.black.withOpacity(0.1),
-                                      //           blurRadius: 10,
-                                      //           spreadRadius: 2,
-                                      //         ),
-                                      //       ],
-                                      //     ),
-                                      //     child: Column(
-                                      //       mainAxisSize: MainAxisSize
-                                      //           .min, // Ensure minimal height
-                                      //       mainAxisAlignment:
-                                      //           MainAxisAlignment.center,
-                                      //       children: [
-                                      //         const Text(
-                                      //           'INVESTMENT WALLET',
-                                      //           style: TextStyle(
-                                      //             color: Colors.white,
-                                      //             fontSize: 16, // Smaller font
-                                      //             fontWeight: FontWeight.bold,
-                                      //           ),
-                                      //         ),
-                                      //         const SizedBox(
-                                      //             height: 12), // Reduced spacing
-                                      //         Row(
-                                      //           mainAxisAlignment:
-                                      //               MainAxisAlignment.center,
-                                      //           children: [
-                                      //             const Icon(
-                                      //                 Icons.account_balance_wallet,
-                                      //                 color: Colors.amber,
-                                      //                 size: 22), // Smaller icon
-                                      //             const SizedBox(
-                                      //                 width: 6), // Reduced spacing
-                                      //             Text(
-                                      //               '\$${_investmentProfit.toStringAsFixed(2)}',
-                                      //               style: const TextStyle(
-                                      //                 color: Colors.white,
-                                      //                 fontSize: 22, // Smaller font
-                                      //                 fontWeight: FontWeight.bold,
-                                      //               ),
-                                      //             ),
-                                      //           ],
-                                      //         ),
-                                      //         const SizedBox(
-                                      //             height: 12), // Reduced spacing
-                                      //         // Empty dropdown button with reduced height
-                                      //         Container(
-                                      //           width: double.infinity,
-                                      //           padding: const EdgeInsets.symmetric(
-                                      //               horizontal: 10,
-                                      //               vertical: 6), // Smaller padding
-                                      //           decoration: BoxDecoration(
-                                      //             color:
-                                      //                 Colors.white.withOpacity(0.1),
-                                      //             borderRadius:
-                                      //                 BorderRadius.circular(
-                                      //                     6), // Smaller radius
-                                      //             border: Border.all(
-                                      //                 color: Colors.white
-                                      //                     .withOpacity(0.3),
-                                      //                 width: 1),
-                                      //           ),
-                                      //           child: Row(
-                                      //             mainAxisAlignment:
-                                      //                 MainAxisAlignment
-                                      //                     .spaceBetween,
-                                      //             children: [
-                                      //               Text(
-                                      //                 'Select Options',
-                                      //                 style: TextStyle(
-                                      //                   color: Colors.white
-                                      //                       .withOpacity(0.8),
-                                      //                   fontSize:
-                                      //                       14, // Smaller font
-                                      //                 ),
-                                      //               ),
-                                      //               Icon(
-                                      //                 Icons.arrow_drop_down,
-                                      //                 color: Colors.white,
-                                      //                 size: 20, // Smaller icon
-                                      //               ),
-                                      //             ],
-                                      //           ),
-                                      //         ),
-                                      //       ],
-                                      //     ),
-                                      //   )
-                                      // ],
-                                      _buildInvestmentWalletSlide(),
-                                    ]),
+                                    // Second slide - Editable text
+                                    Container(
+                                      margin: const EdgeInsets.all(16.0),
+                                      padding: const EdgeInsets.all(
+                                          12.0), // Reduced padding
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.purple.withOpacity(0.6),
+                                            Colors.blue.withOpacity(0.4),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius:
+                                            BorderRadius.circular(16.0),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.1),
+                                            blurRadius: 10,
+                                            spreadRadius: 2,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize
+                                            .min, // Ensure minimal height
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Text(
+                                            'INVESTMENT WALLET',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16, // Smaller font
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                              height: 12), // Reduced spacing
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(
+                                                  Icons.account_balance_wallet,
+                                                  color: Colors.amber,
+                                                  size: 22), // Smaller icon
+                                              const SizedBox(
+                                                  width: 6), // Reduced spacing
+                                              Text(
+                                                '\$${_investmentProfit.toStringAsFixed(2)}',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 22, // Smaller font
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(
+                                              height: 12), // Reduced spacing
+                                          // Empty dropdown button with reduced height
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                                vertical: 6), // Smaller padding
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  Colors.white.withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      6), // Smaller radius
+                                              border: Border.all(
+                                                  color: Colors.white
+                                                      .withOpacity(0.3),
+                                                  width: 1),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  'Select Options',
+                                                  style: TextStyle(
+                                                    color: Colors.white
+                                                        .withOpacity(0.8),
+                                                    fontSize:
+                                                        14, // Smaller font
+                                                  ),
+                                                ),
+                                                Icon(
+                                                  Icons.arrow_drop_down,
+                                                  color: Colors.white,
+                                                  size: 20, // Smaller icon
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  ],
+                                ),
                               ),
                               // Dot indicators for pagination
                               Padding(
@@ -1168,80 +692,75 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
 
-                          // // Golden tape profit container
-                          // Padding(
-                          //   padding:
-                          //       const EdgeInsets.symmetric(horizontal: 20.0),
-                          //   child: Container(
-                          //     width: double.infinity,
-                          //     padding: const EdgeInsets.symmetric(
-                          //         vertical: 12.0, horizontal: 16.0),
-                          //     decoration: BoxDecoration(
-                          //       gradient: LinearGradient(
-                          //         colors: [
-                          //           const Color(0xFFFFD700).withOpacity(0.8),
-                          //           const Color(0xFFF5DEB3).withOpacity(0.9),
-                          //         ],
-                          //         begin: Alignment.centerLeft,
-                          //         end: Alignment.centerRight,
-                          //       ),
-                          //       borderRadius: BorderRadius.circular(10),
-                          //       boxShadow: [
-                          //         BoxShadow(
-                          //           color: Colors.black.withOpacity(0.1),
-                          //           blurRadius: 4,
-                          //           offset: const Offset(0, 2),
-                          //         ),
-                          //       ],
-                          //     ),
-                          //     child: Row(
-                          //       mainAxisAlignment:
-                          //           MainAxisAlignment.spaceBetween,
-                          //       children: [
-                          //         Flexible(
-                          //           child: Row(
-                          //             mainAxisSize: MainAxisSize.min,
-                          //             children: [
-                          //               const Icon(
-                          //                 Icons.trending_up,
-                          //                 color: Color(0xFF8B4513),
-                          //                 size: 20,
-                          //               ),
-                          //               const SizedBox(width: 8),
-                          //               Flexible(
-                          //                 child: const Text(
-                          //                   'Today\'s Profit',
-                          //                   overflow: TextOverflow.ellipsis,
-                          //                   style: TextStyle(
-                          //                     color: Color(0xFF8B4513),
-                          //                     fontWeight: FontWeight.bold,
-                          //                     fontSize: 14,
-                          //                   ),
-                          //                 ),
-                          //               ),
-                          //             ],
-                          //           ),
-                          //         ),
-                          //         const SizedBox(width: 8),
-                          //         Text(
-                          //           'LKR${(_totalIncome * 0.05).toStringAsFixed(2)}',
-                          //           style: const TextStyle(
-                          //             color: Color(0xFF8B4513),
-                          //             fontWeight: FontWeight.bold,
-                          //             fontSize: 16,
-                          //           ),
-                          //         ),
-                          //       ],
-                          //     ),
-                          //   ),
-                          // ),
-                          // const SizedBox(height: 12),
+                          // Golden tape profit container
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 20.0),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 12.0, horizontal: 16.0),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFFFFD700).withOpacity(0.8),
+                                    const Color(0xFFF5DEB3).withOpacity(0.9),
+                                  ],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Flexible(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.trending_up,
+                                          color: Color(0xFF8B4513),
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: const Text(
+                                            'Today\'s Profit',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: Color(0xFF8B4513),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '\$${(_totalIncome * 0.05).toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF8B4513),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
 
-// Add today's profit container (will only show when profit is available)
-                          _buildTodayProfitContainer(),
-                          _hasTodayProfit
-                              ? const SizedBox(height: 12)
-                              : SizedBox.shrink(),
                           // Total income container
                           Container(
                             height: 150,
@@ -1272,7 +791,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        'LKR${_totalIncome.toStringAsFixed(2)}',
+                                        '\$${_totalIncome.toStringAsFixed(2)}',
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 22,
@@ -1296,6 +815,73 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 20),
 
                           // Golden tape upcoming store container
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 20.0),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 10.0, horizontal: 16.0),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFFFFD700).withOpacity(0.8),
+                                    const Color(0xFFF5DEB3).withOpacity(0.9),
+                                  ],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Flexible(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.store,
+                                          color: Color(0xFF8B4513),
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: const Text(
+                                            'Upcoming Store',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: Color(0xFF8B4513),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Coming Soon',
+                                    style: TextStyle(
+                                      color: Color(0xFF8B4513),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
 
                           // Current rate container
                           Padding(
@@ -1323,8 +909,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ? _errorCoinValueWidget(
                                             width, _coinValueError)
                                         : _infoWidget2(
-                                            'Current Balance',
-                                            'LKR ${_investmentProfit + _referralIncome}',
+                                            'Current Coin Rate',
+                                            '1 Coin = LKR${_coinValue.toStringAsFixed(2)}',
                                             width),
                               ),
                             ),
@@ -1370,7 +956,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     MainAxisAlignment.center,
                                                 children: [
                                                   const Text(
-                                                    //7135184230
                                                     'Investment Profit',
                                                     style: TextStyle(
                                                       color: Colors.white,
@@ -1567,73 +1152,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
 
-                          const SizedBox(height: 20),
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 20.0),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 30.0, horizontal: 16.0),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    const Color(0xFFFFD700).withOpacity(0.8),
-                                    const Color(0xFFF5DEB3).withOpacity(0.9),
-                                  ],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Flexible(
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.store,
-                                          color: Color(0xFF8B4513),
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Flexible(
-                                          child: const Text(
-                                            'Upcoming Store',
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              color: Color(0xFF8B4513),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Coming Soon',
-                                    style: TextStyle(
-                                      color: Color(0xFF8B4513),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
                           const SizedBox(height: 60),
                         ],
                       ),
@@ -1706,12 +1224,12 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                "Investment: LKR${referral.totalInvestment?.toStringAsFixed(2) ?? '0.00'}",
+                "Investment: \$${referral.totalInvestment?.toStringAsFixed(2) ?? '0.00'}",
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
               const SizedBox(height: 4),
               Text(
-                "Coins: LKR${referral.totalCoinPurchase?.toStringAsFixed(2) ?? '0.00'}",
+                "Coins: \$${referral.totalCoinPurchase?.toStringAsFixed(2) ?? '0.00'}",
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
             ],
@@ -1809,388 +1327,6 @@ class _HomeScreenState extends State<HomeScreen> {
           maxLines: 1,
         ),
       ],
-    );
-  }
-
-  Widget _buildInvestmentWalletSlide() {
-    return Container(
-      margin: const EdgeInsets.all(16.0),
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.purple.withOpacity(0.6),
-            Colors.blue.withOpacity(0.4),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'INVESTMENT WALLET',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.account_balance_wallet,
-                  color: Colors.amber, size: 22),
-              const SizedBox(width: 6),
-              _isLoadingDeposits
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Text(
-                      'LKR ${_totalDepositAmount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () {
-              // Instead of just toggling a boolean, show a dialog when clicked
-              if (!_isLoadingDeposits) {
-                _showDepositHistoryDialog(context);
-              }
-            },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-                border:
-                    Border.all(color: Colors.white.withOpacity(0.3), width: 1),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Deposit History',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 14,
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_drop_down,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-// Create a new method to show deposit history in a dialog
-  void _showDepositHistoryDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: double.infinity,
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.6,
-              maxWidth: MediaQuery.of(context).size.width * 0.9,
-            ),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.indigo.withOpacity(0.9),
-                  Colors.purple.withOpacity(0.8),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Deposit History',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close, color: Colors.white),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(color: Colors.white30),
-                _buildDepositHistoryContent(),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-// Content for the deposit history dialog
-  Widget _buildDepositHistoryContent() {
-    if (_userDeposits.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Center(
-          child: Text(
-            'No deposits found',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Flexible(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Date',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Amount',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Type',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // List
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: _userDeposits.length,
-              itemBuilder: (context, index) {
-                final deposit = _userDeposits[index];
-                return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    border: index < _userDeposits.length - 1
-                        ? Border(
-                            bottom: BorderSide(
-                              color: Colors.white.withOpacity(0.1),
-                              width: 1,
-                            ),
-                          )
-                        : null,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          _formatDate(deposit.createdAt),
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          'LKR ${deposit.amount.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: deposit.purpose == 'investment'
-                                ? Colors.green.withOpacity(0.3)
-                                : Colors.blue.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            deposit.purpose == 'investment'
-                                ? 'Investment'
-                                : 'Coin',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // Summary footer
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.2),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Investment Deposits:',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      'LKR ${_totalInvestmentDeposits.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Coin Deposits:',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      'LKR ${_totalCoinDeposits.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total Deposits:',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'LKR ${_totalDepositAmount.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
