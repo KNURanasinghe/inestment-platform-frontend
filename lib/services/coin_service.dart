@@ -62,42 +62,6 @@ class CoinBalance {
   }
 }
 
-class UserInvestmentSummary {
-  final double investmentsTotal;
-  final double coinPurchasesTotal;
-  final double totalDeposits;
-  final double pendingInvestments;
-  final double pendingCoinPurchases;
-  final int pendingDepositsCount;
-  final double currentCoinBalance;
-
-  UserInvestmentSummary({
-    required this.investmentsTotal,
-    required this.coinPurchasesTotal,
-    required this.totalDeposits,
-    required this.pendingInvestments,
-    required this.pendingCoinPurchases,
-    required this.pendingDepositsCount,
-    required this.currentCoinBalance,
-  });
-
-  factory UserInvestmentSummary.fromJson(Map<String, dynamic> json) {
-    final summary = json['summary'] ?? {};
-    final investments = summary['investments'] ?? {};
-    final coinPurchases = summary['coinPurchases'] ?? {};
-
-    return UserInvestmentSummary(
-      investmentsTotal: CoinValue._parseAmount(investments['total']),
-      coinPurchasesTotal: CoinValue._parseAmount(coinPurchases['total']),
-      totalDeposits: CoinValue._parseAmount(summary['totalDeposits']),
-      pendingInvestments: CoinValue._parseAmount(investments['pending']),
-      pendingCoinPurchases: CoinValue._parseAmount(coinPurchases['pending']),
-      pendingDepositsCount: summary['pendingDeposits'] ?? 0,
-      currentCoinBalance: CoinValue._parseAmount(summary['currentCoinBalance']),
-    );
-  }
-}
-
 class CoinService {
   final String baseUrl;
 
@@ -201,34 +165,38 @@ class CoinService {
     }
   }
 
-  // Get user investment summary - for total coin and investment deposits
-  Future<Map<String, dynamic>> getUserInvestmentSummary(int userId) async {
+  Future<Map<String, dynamic>> getUserCoins(int userId) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/users/$userId/investment-summary'),
+        Uri.parse('$baseUrl/api/user/$userId/coins'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final UserInvestmentSummary summary =
-            UserInvestmentSummary.fromJson(data);
-
-        return {
-          'success': true,
-          'summary': summary,
-        };
+        final responseData = json.decode(response.body);
+        if (responseData['success']) {
+          return {
+            'success': true,
+            'coinData': UserCoinData.fromJson(responseData['data']),
+          };
+        } else {
+          return {
+            'success': false,
+            'message': responseData['message'] ?? 'Failed to get user coins',
+          };
+        }
       } else {
-        final Map<String, dynamic> data = json.decode(response.body);
         return {
           'success': false,
-          'message': data['message'] ?? 'Failed to get investment summary',
+          'message': 'Server error: ${response.statusCode}',
         };
       }
     } catch (e) {
-      print('Error getting investment summary: $e');
       return {
         'success': false,
-        'message': 'Error getting investment summary: $e',
+        'message': 'Network error: $e',
       };
     }
   }
@@ -273,5 +241,27 @@ class CoinService {
         'message': 'Error transferring coins: $e',
       };
     }
+  }
+}
+
+class UserCoinData {
+  final double coinCount;
+  final double pendingCoins;
+  final DateTime lastUpdated;
+
+  UserCoinData({
+    required this.coinCount,
+    required this.pendingCoins,
+    required this.lastUpdated,
+  });
+
+  factory UserCoinData.fromJson(Map<String, dynamic> json) {
+    return UserCoinData(
+      coinCount: json['coinCount']?.toDouble() ?? 0.0,
+      pendingCoins: json['pendingCoins']?.toDouble() ?? 0.0,
+      lastUpdated: json['lastUpdated'] != null
+          ? DateTime.parse(json['lastUpdated'])
+          : DateTime.now(),
+    );
   }
 }
