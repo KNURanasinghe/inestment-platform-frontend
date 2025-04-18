@@ -70,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
   double _totalCoinDeposits = 0.0;
   bool _isLoadingDeposits = true;
   List<Deposit> _userDeposits = [];
-  bool _isDropdownOpen = false;
+  final bool _isDropdownOpen = false;
 
   // Services
   final UserApiService _userApiService = UserApiService(
@@ -1003,170 +1003,171 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
 
                           // Slidable containers with PageView
-                          // Column(
-                          //   children: [
-                          //     SizedBox(
-                          //       height: 200,
-                          //       width: width,
-                          //       child: PageView(
-                          //         controller: _pageController,
-                          //         onPageChanged: (int page) {
-                          //           setState(() {
-                          //             _currentPage = page;
-                          //           });
-                          //         },
-                          //         children: [
-                          //           // First slide - Coin information
-                          //           Container(
-                          //             margin: const EdgeInsets.all(16.0),
-                          //             padding: const EdgeInsets.all(16.0),
-                          //             decoration: BoxDecoration(
-                          //               gradient: LinearGradient(
-                          //                 colors: [
-                          //                   Colors.purple.withOpacity(0.6),
-                          //                   Colors.blue.withOpacity(0.4),
-                          //                 ],
-                          //                 begin: Alignment.topLeft,
-                          //                 end: Alignment.bottomRight,
-                          //               ),
-                          //               borderRadius:
-                          //                   BorderRadius.circular(16.0),
-                          //               boxShadow: [
-                          //                 BoxShadow(
-                          //                   color:
-                          //                       Colors.black.withOpacity(0.1),
-                          //                   blurRadius: 10,
-                          //                   spreadRadius: 2,
-                          //                 ),
-                          //               ],
-                          //             ),
-                          //             child: Center(
-                          //               child: _userCoinInfoWidget(),
-                          //             ),
-                          //           ),
+                          Column(
+                            children: [
+                              SizedBox(
+                                height: 200,
+                                width: width,
+                                child: PageView(
+                                    controller: _pageController,
+                                    onPageChanged: (int page) {
+                                      setState(() {
+                                        _currentPage = page;
+                                      });
+                                    },
+                                    children: [
+                                      // First slide - Coin information
+                                      Container(
+                                        margin: const EdgeInsets.all(16.0),
+                                        padding: const EdgeInsets.all(16.0),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Colors.purple.withOpacity(0.6),
+                                              Colors.blue.withOpacity(0.4),
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(16.0),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color:
+                                                  Colors.black.withOpacity(0.1),
+                                              blurRadius: 10,
+                                              spreadRadius: 2,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: _userCoinInfoWidget(),
+                                        ),
+                                      ),
 
-                          //           // Second slide - Editable text
-                          //           Container(
-                          //             margin: const EdgeInsets.all(16.0),
-                          //             padding: const EdgeInsets.all(
-                          //                 12.0), // Reduced padding
-                          //             decoration: BoxDecoration(
-                          //               gradient: LinearGradient(
-                          //                 colors: [
-                          //                   Colors.purple.withOpacity(0.6),
-                          //                   Colors.blue.withOpacity(0.4),
-                          //                 ],
-                          //                 begin: Alignment.topLeft,
-                          //                 end: Alignment.bottomRight,
-                          //               ),
-                          //               borderRadius:
-                          //                   BorderRadius.circular(16.0),
-                          //               boxShadow: [
-                          //                 BoxShadow(
-                          //                   color:
-                          //                       Colors.black.withOpacity(0.1),
-                          //                   blurRadius: 10,
-                          //                   spreadRadius: 2,
-                          //                 ),
-                          //               ],
-                          //             ),
-                          //             child: Column(
-                          //               mainAxisSize: MainAxisSize
-                          //                   .min, // Ensure minimal height
-                          //               mainAxisAlignment:
-                          //                   MainAxisAlignment.center,
-                          //               children: [
-                          //                 const Text(
-                          //                   'INVESTMENT WALLET',
-                          //                   style: TextStyle(
-                          //                     color: Colors.white,
-                          //                     fontSize: 16, // Smaller font
-                          //                     fontWeight: FontWeight.bold,
-                          //                   ),
-                          //                 ),
-                          //                 const SizedBox(
-                          //                     height: 12), // Reduced spacing
-                          //                 Row(
-                          //                   mainAxisAlignment:
-                          //                       MainAxisAlignment.center,
-                          //                   children: [
-                          //                     const Icon(
-                          //                         Icons.account_balance_wallet,
-                          //                         color: Colors.amber,
-                          //                         size: 22), // Smaller icon
-                          //                     const SizedBox(
-                          //                         width: 6), // Reduced spacing
-                          //                     Text(
-                          //                       '\$${_investmentProfit.toStringAsFixed(2)}',
-                          //                       style: const TextStyle(
-                          //                         color: Colors.white,
-                          //                         fontSize: 22, // Smaller font
-                          //                         fontWeight: FontWeight.bold,
-                          //                       ),
-                          //                     ),
-                          //                   ],
-                          //                 ),
-                          //                 const SizedBox(
-                          //                     height: 12), // Reduced spacing
-                          //                 // Empty dropdown button with reduced height
-                          //                 Container(
-                          //                   width: double.infinity,
-                          //                   padding: const EdgeInsets.symmetric(
-                          //                       horizontal: 10,
-                          //                       vertical: 6), // Smaller padding
-                          //                   decoration: BoxDecoration(
-                          //                     color:
-                          //                         Colors.white.withOpacity(0.1),
-                          //                     borderRadius:
-                          //                         BorderRadius.circular(
-                          //                             6), // Smaller radius
-                          //                     border: Border.all(
-                          //                         color: Colors.white
-                          //                             .withOpacity(0.3),
-                          //                         width: 1),
-                          //                   ),
-                          //                   child: Row(
-                          //                     mainAxisAlignment:
-                          //                         MainAxisAlignment
-                          //                             .spaceBetween,
-                          //                     children: [
-                          //                       Text(
-                          //                         'Select Options',
-                          //                         style: TextStyle(
-                          //                           color: Colors.white
-                          //                               .withOpacity(0.8),
-                          //                           fontSize:
-                          //                               14, // Smaller font
-                          //                         ),
-                          //                       ),
-                          //                       Icon(
-                          //                         Icons.arrow_drop_down,
-                          //                         color: Colors.white,
-                          //                         size: 20, // Smaller icon
-                          //                       ),
-                          //                     ],
-                          //                   ),
-                          //                 ),
-                          //               ],
-                          //             ),
-                          //           )
-                          //         ],
-                          //       ),
-                          //     ),
-                          //     // Dot indicators for pagination
-                          //     Padding(
-                          //       padding: const EdgeInsets.only(bottom: 16.0),
-                          //       child: Row(
-                          //         mainAxisAlignment: MainAxisAlignment.center,
-                          //         children: List.generate(
-                          //           2,
-                          //           (index) => _buildDotIndicator(index),
-                          //         ),
-                          //       ),
-                          //     ),
-                          //   ],
-                          // ),
-                          _buildInvestmentWalletSlide(),
+                                      // Second slide - Editable text
+                                      //   Container(
+                                      //     margin: const EdgeInsets.all(16.0),
+                                      //     padding: const EdgeInsets.all(
+                                      //         12.0), // Reduced padding
+                                      //     decoration: BoxDecoration(
+                                      //       gradient: LinearGradient(
+                                      //         colors: [
+                                      //           Colors.purple.withOpacity(0.6),
+                                      //           Colors.blue.withOpacity(0.4),
+                                      //         ],
+                                      //         begin: Alignment.topLeft,
+                                      //         end: Alignment.bottomRight,
+                                      //       ),
+                                      //       borderRadius:
+                                      //           BorderRadius.circular(16.0),
+                                      //       boxShadow: [
+                                      //         BoxShadow(
+                                      //           color:
+                                      //               Colors.black.withOpacity(0.1),
+                                      //           blurRadius: 10,
+                                      //           spreadRadius: 2,
+                                      //         ),
+                                      //       ],
+                                      //     ),
+                                      //     child: Column(
+                                      //       mainAxisSize: MainAxisSize
+                                      //           .min, // Ensure minimal height
+                                      //       mainAxisAlignment:
+                                      //           MainAxisAlignment.center,
+                                      //       children: [
+                                      //         const Text(
+                                      //           'INVESTMENT WALLET',
+                                      //           style: TextStyle(
+                                      //             color: Colors.white,
+                                      //             fontSize: 16, // Smaller font
+                                      //             fontWeight: FontWeight.bold,
+                                      //           ),
+                                      //         ),
+                                      //         const SizedBox(
+                                      //             height: 12), // Reduced spacing
+                                      //         Row(
+                                      //           mainAxisAlignment:
+                                      //               MainAxisAlignment.center,
+                                      //           children: [
+                                      //             const Icon(
+                                      //                 Icons.account_balance_wallet,
+                                      //                 color: Colors.amber,
+                                      //                 size: 22), // Smaller icon
+                                      //             const SizedBox(
+                                      //                 width: 6), // Reduced spacing
+                                      //             Text(
+                                      //               '\$${_investmentProfit.toStringAsFixed(2)}',
+                                      //               style: const TextStyle(
+                                      //                 color: Colors.white,
+                                      //                 fontSize: 22, // Smaller font
+                                      //                 fontWeight: FontWeight.bold,
+                                      //               ),
+                                      //             ),
+                                      //           ],
+                                      //         ),
+                                      //         const SizedBox(
+                                      //             height: 12), // Reduced spacing
+                                      //         // Empty dropdown button with reduced height
+                                      //         Container(
+                                      //           width: double.infinity,
+                                      //           padding: const EdgeInsets.symmetric(
+                                      //               horizontal: 10,
+                                      //               vertical: 6), // Smaller padding
+                                      //           decoration: BoxDecoration(
+                                      //             color:
+                                      //                 Colors.white.withOpacity(0.1),
+                                      //             borderRadius:
+                                      //                 BorderRadius.circular(
+                                      //                     6), // Smaller radius
+                                      //             border: Border.all(
+                                      //                 color: Colors.white
+                                      //                     .withOpacity(0.3),
+                                      //                 width: 1),
+                                      //           ),
+                                      //           child: Row(
+                                      //             mainAxisAlignment:
+                                      //                 MainAxisAlignment
+                                      //                     .spaceBetween,
+                                      //             children: [
+                                      //               Text(
+                                      //                 'Select Options',
+                                      //                 style: TextStyle(
+                                      //                   color: Colors.white
+                                      //                       .withOpacity(0.8),
+                                      //                   fontSize:
+                                      //                       14, // Smaller font
+                                      //                 ),
+                                      //               ),
+                                      //               Icon(
+                                      //                 Icons.arrow_drop_down,
+                                      //                 color: Colors.white,
+                                      //                 size: 20, // Smaller icon
+                                      //               ),
+                                      //             ],
+                                      //           ),
+                                      //         ),
+                                      //       ],
+                                      //     ),
+                                      //   )
+                                      // ],
+                                      _buildInvestmentWalletSlide(),
+                                    ]),
+                              ),
+                              // Dot indicators for pagination
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 16.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: List.generate(
+                                    2,
+                                    (index) => _buildDotIndicator(index),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
                           // // Golden tape profit container
                           // Padding(
                           //   padding:
@@ -1811,7 +1812,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Replace your current investment wallet slide with this updated version
   Widget _buildInvestmentWalletSlide() {
     return Container(
       margin: const EdgeInsets.all(16.0),
@@ -1836,7 +1836,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text(
             'INVESTMENT WALLET',
@@ -1875,9 +1874,10 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 12),
           GestureDetector(
             onTap: () {
-              setState(() {
-                _isDropdownOpen = !_isDropdownOpen;
-              });
+              // Instead of just toggling a boolean, show a dialog when clicked
+              if (!_isLoadingDeposits) {
+                _showDepositHistoryDialog(context);
+              }
             },
             child: Container(
               width: double.infinity,
@@ -1899,9 +1899,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   Icon(
-                    _isDropdownOpen
-                        ? Icons.arrow_drop_up
-                        : Icons.arrow_drop_down,
+                    Icons.arrow_drop_down,
                     color: Colors.white,
                     size: 20,
                   ),
@@ -1909,75 +1907,99 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-
-          // Dropdown content
-          if (_isDropdownOpen) _buildDropdownContent(),
         ],
       ),
     );
   }
 
-// Create a method to build the dropdown content
-  Widget _buildDropdownContent() {
-    if (_isLoadingDeposits) {
-      return Container(
-        margin: const EdgeInsets.only(top: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2,
+// Create a new method to show deposit history in a dialog
+  void _showDepositHistoryDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: double.infinity,
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.6,
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+            ),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.indigo.withOpacity(0.9),
+                  Colors.purple.withOpacity(0.8),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Deposit History',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(color: Colors.white30),
+                _buildDepositHistoryContent(),
+              ],
             ),
           ),
-        ),
-      );
-    }
+        );
+      },
+    );
+  }
 
+// Content for the deposit history dialog
+  Widget _buildDepositHistoryContent() {
     if (_userDeposits.isEmpty) {
-      return Container(
-        margin: const EdgeInsets.only(top: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(6),
-        ),
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Center(
           child: Text(
             'No deposits found',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
-              fontSize: 14,
+              color: Colors.white,
+              fontSize: 16,
             ),
           ),
         ),
       );
     }
 
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
+    return Flexible(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Header
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.white.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
                 Expanded(
@@ -1985,8 +2007,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text(
                     'Date',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1996,8 +2018,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text(
                     'Amount',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -2007,8 +2029,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text(
                     'Type',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -2016,19 +2038,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          Container(
-            constraints: BoxConstraints(
-              maxHeight: 120, // Limit height to avoid too much space
-            ),
+
+          // List
+          Flexible(
             child: ListView.builder(
               shrinkWrap: true,
-              physics: const BouncingScrollPhysics(),
               itemCount: _userDeposits.length,
               itemBuilder: (context, index) {
                 final deposit = _userDeposits[index];
                 return Container(
                   padding:
-                      const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     border: index < _userDeposits.length - 1
                         ? Border(
@@ -2047,7 +2067,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _formatDate(deposit.createdAt),
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.8),
-                            fontSize: 12,
+                            fontSize: 14,
                           ),
                         ),
                       ),
@@ -2057,7 +2077,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           'LKR ${deposit.amount.toStringAsFixed(2)}',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.8),
-                            fontSize: 12,
+                            fontSize: 14,
                           ),
                         ),
                       ),
@@ -2065,7 +2085,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         flex: 2,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: deposit.purpose == 'investment'
                                 ? Colors.green.withOpacity(0.3)
@@ -2078,7 +2098,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 : 'Coin',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 10,
+                              fontSize: 12,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -2090,13 +2110,15 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           ),
+
+          // Summary footer
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.2),
               borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(6),
-                bottomRight: Radius.circular(6),
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
               ),
             ),
             child: Column(
@@ -2108,20 +2130,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       'Investment Deposits:',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.8),
-                        fontSize: 12,
+                        fontSize: 14,
                       ),
                     ),
                     Text(
                       'LKR ${_totalInvestmentDeposits.toStringAsFixed(2)}',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -2129,14 +2151,36 @@ class _HomeScreenState extends State<HomeScreen> {
                       'Coin Deposits:',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.8),
-                        fontSize: 12,
+                        fontSize: 14,
                       ),
                     ),
                     Text(
                       'LKR ${_totalCoinDeposits.toStringAsFixed(2)}',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Total Deposits:',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'LKR ${_totalDepositAmount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
