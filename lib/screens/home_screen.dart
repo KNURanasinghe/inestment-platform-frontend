@@ -9,6 +9,8 @@ import 'package:investment_plan_app/services/coin_service.dart';
 import 'package:investment_plan_app/services/investment_service.dart';
 import 'package:investment_plan_app/services/referral_service.dart';
 
+import '../services/deposit_service.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -61,6 +63,14 @@ class _HomeScreenState extends State<HomeScreen> {
   double _todayProfitAmount = 0.0;
   bool _isLoadingTodayProfit = true;
   bool _isClaimingProfit = false;
+
+  // Add these variables to your _HomeScreenState class
+  double _totalDepositAmount = 0.0;
+  double _totalInvestmentDeposits = 0.0;
+  double _totalCoinDeposits = 0.0;
+  bool _isLoadingDeposits = true;
+  List<Deposit> _userDeposits = [];
+  bool _isDropdownOpen = false;
 
   // Services
   final UserApiService _userApiService = UserApiService(
@@ -155,6 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _loadInvestmentProfits(),
         _loadReferrals(),
         _loadTodayProfit(),
+        _loadUserDeposits(),
       ]);
       await _loadUserCoins();
       _calculateTotalIncome();
@@ -165,6 +176,62 @@ class _HomeScreenState extends State<HomeScreen> {
           // Just to trigger a rebuild
         });
       }
+    }
+  }
+
+// Create a method to format date
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  Future<void> _loadUserDeposits() async {
+    if (_userId <= 0) return;
+
+    setState(() {
+      _isLoadingDeposits = true;
+    });
+
+    try {
+      // Create deposit service
+      final depositService =
+          DepositService(baseUrl: 'http://145.223.21.62:5021');
+
+      // Get all user deposits that are not pending
+      final deposits = await depositService.getUserDeposits(_userId);
+      final approvedDeposits =
+          deposits.where((deposit) => !deposit.isPending).toList();
+
+      // Calculate total deposit amount
+      double totalAmount = 0.0;
+      double investmentAmount = 0.0;
+      double coinAmount = 0.0;
+
+      for (var deposit in approvedDeposits) {
+        totalAmount += deposit.amount;
+        if (deposit.purpose == 'investment') {
+          investmentAmount += deposit.amount;
+        } else if (deposit.purpose == 'buy_coin') {
+          coinAmount += deposit.amount;
+        }
+      }
+
+      setState(() {
+        _userDeposits = approvedDeposits;
+        _totalDepositAmount = totalAmount;
+        _totalInvestmentDeposits = investmentAmount;
+        _totalCoinDeposits = coinAmount;
+        _isLoadingDeposits = false;
+      });
+
+      print('Loaded user deposits: ${approvedDeposits.length}');
+      print('Total deposit amount: $_totalDepositAmount');
+      print('Investment deposits: $_totalInvestmentDeposits');
+      print('Coin deposits: $_totalCoinDeposits');
+    } catch (e) {
+      setState(() {
+        _isLoadingDeposits = false;
+      });
+      print('Error loading user deposits: $e');
     }
   }
 
@@ -936,170 +1003,170 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
 
                           // Slidable containers with PageView
-                          Column(
-                            children: [
-                              SizedBox(
-                                height: 200,
-                                width: width,
-                                child: PageView(
-                                  controller: _pageController,
-                                  onPageChanged: (int page) {
-                                    setState(() {
-                                      _currentPage = page;
-                                    });
-                                  },
-                                  children: [
-                                    // First slide - Coin information
-                                    Container(
-                                      margin: const EdgeInsets.all(16.0),
-                                      padding: const EdgeInsets.all(16.0),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Colors.purple.withOpacity(0.6),
-                                            Colors.blue.withOpacity(0.4),
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                        borderRadius:
-                                            BorderRadius.circular(16.0),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.1),
-                                            blurRadius: 10,
-                                            spreadRadius: 2,
-                                          ),
-                                        ],
-                                      ),
-                                      child: Center(
-                                        child: _userCoinInfoWidget(),
-                                      ),
-                                    ),
+                          // Column(
+                          //   children: [
+                          //     SizedBox(
+                          //       height: 200,
+                          //       width: width,
+                          //       child: PageView(
+                          //         controller: _pageController,
+                          //         onPageChanged: (int page) {
+                          //           setState(() {
+                          //             _currentPage = page;
+                          //           });
+                          //         },
+                          //         children: [
+                          //           // First slide - Coin information
+                          //           Container(
+                          //             margin: const EdgeInsets.all(16.0),
+                          //             padding: const EdgeInsets.all(16.0),
+                          //             decoration: BoxDecoration(
+                          //               gradient: LinearGradient(
+                          //                 colors: [
+                          //                   Colors.purple.withOpacity(0.6),
+                          //                   Colors.blue.withOpacity(0.4),
+                          //                 ],
+                          //                 begin: Alignment.topLeft,
+                          //                 end: Alignment.bottomRight,
+                          //               ),
+                          //               borderRadius:
+                          //                   BorderRadius.circular(16.0),
+                          //               boxShadow: [
+                          //                 BoxShadow(
+                          //                   color:
+                          //                       Colors.black.withOpacity(0.1),
+                          //                   blurRadius: 10,
+                          //                   spreadRadius: 2,
+                          //                 ),
+                          //               ],
+                          //             ),
+                          //             child: Center(
+                          //               child: _userCoinInfoWidget(),
+                          //             ),
+                          //           ),
 
-                                    // Second slide - Editable text
-                                    Container(
-                                      margin: const EdgeInsets.all(16.0),
-                                      padding: const EdgeInsets.all(
-                                          12.0), // Reduced padding
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Colors.purple.withOpacity(0.6),
-                                            Colors.blue.withOpacity(0.4),
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                        borderRadius:
-                                            BorderRadius.circular(16.0),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.1),
-                                            blurRadius: 10,
-                                            spreadRadius: 2,
-                                          ),
-                                        ],
-                                      ),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize
-                                            .min, // Ensure minimal height
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          const Text(
-                                            'INVESTMENT WALLET',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 16, // Smaller font
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(
-                                              height: 12), // Reduced spacing
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              const Icon(
-                                                  Icons.account_balance_wallet,
-                                                  color: Colors.amber,
-                                                  size: 22), // Smaller icon
-                                              const SizedBox(
-                                                  width: 6), // Reduced spacing
-                                              Text(
-                                                '\$${_investmentProfit.toStringAsFixed(2)}',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 22, // Smaller font
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(
-                                              height: 12), // Reduced spacing
-                                          // Empty dropdown button with reduced height
-                                          Container(
-                                            width: double.infinity,
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 10,
-                                                vertical: 6), // Smaller padding
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  Colors.white.withOpacity(0.1),
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                      6), // Smaller radius
-                                              border: Border.all(
-                                                  color: Colors.white
-                                                      .withOpacity(0.3),
-                                                  width: 1),
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  'Select Options',
-                                                  style: TextStyle(
-                                                    color: Colors.white
-                                                        .withOpacity(0.8),
-                                                    fontSize:
-                                                        14, // Smaller font
-                                                  ),
-                                                ),
-                                                Icon(
-                                                  Icons.arrow_drop_down,
-                                                  color: Colors.white,
-                                                  size: 20, // Smaller icon
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                  ],
-                                ),
-                              ),
-                              // Dot indicators for pagination
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 16.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: List.generate(
-                                    2,
-                                    (index) => _buildDotIndicator(index),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-
+                          //           // Second slide - Editable text
+                          //           Container(
+                          //             margin: const EdgeInsets.all(16.0),
+                          //             padding: const EdgeInsets.all(
+                          //                 12.0), // Reduced padding
+                          //             decoration: BoxDecoration(
+                          //               gradient: LinearGradient(
+                          //                 colors: [
+                          //                   Colors.purple.withOpacity(0.6),
+                          //                   Colors.blue.withOpacity(0.4),
+                          //                 ],
+                          //                 begin: Alignment.topLeft,
+                          //                 end: Alignment.bottomRight,
+                          //               ),
+                          //               borderRadius:
+                          //                   BorderRadius.circular(16.0),
+                          //               boxShadow: [
+                          //                 BoxShadow(
+                          //                   color:
+                          //                       Colors.black.withOpacity(0.1),
+                          //                   blurRadius: 10,
+                          //                   spreadRadius: 2,
+                          //                 ),
+                          //               ],
+                          //             ),
+                          //             child: Column(
+                          //               mainAxisSize: MainAxisSize
+                          //                   .min, // Ensure minimal height
+                          //               mainAxisAlignment:
+                          //                   MainAxisAlignment.center,
+                          //               children: [
+                          //                 const Text(
+                          //                   'INVESTMENT WALLET',
+                          //                   style: TextStyle(
+                          //                     color: Colors.white,
+                          //                     fontSize: 16, // Smaller font
+                          //                     fontWeight: FontWeight.bold,
+                          //                   ),
+                          //                 ),
+                          //                 const SizedBox(
+                          //                     height: 12), // Reduced spacing
+                          //                 Row(
+                          //                   mainAxisAlignment:
+                          //                       MainAxisAlignment.center,
+                          //                   children: [
+                          //                     const Icon(
+                          //                         Icons.account_balance_wallet,
+                          //                         color: Colors.amber,
+                          //                         size: 22), // Smaller icon
+                          //                     const SizedBox(
+                          //                         width: 6), // Reduced spacing
+                          //                     Text(
+                          //                       '\$${_investmentProfit.toStringAsFixed(2)}',
+                          //                       style: const TextStyle(
+                          //                         color: Colors.white,
+                          //                         fontSize: 22, // Smaller font
+                          //                         fontWeight: FontWeight.bold,
+                          //                       ),
+                          //                     ),
+                          //                   ],
+                          //                 ),
+                          //                 const SizedBox(
+                          //                     height: 12), // Reduced spacing
+                          //                 // Empty dropdown button with reduced height
+                          //                 Container(
+                          //                   width: double.infinity,
+                          //                   padding: const EdgeInsets.symmetric(
+                          //                       horizontal: 10,
+                          //                       vertical: 6), // Smaller padding
+                          //                   decoration: BoxDecoration(
+                          //                     color:
+                          //                         Colors.white.withOpacity(0.1),
+                          //                     borderRadius:
+                          //                         BorderRadius.circular(
+                          //                             6), // Smaller radius
+                          //                     border: Border.all(
+                          //                         color: Colors.white
+                          //                             .withOpacity(0.3),
+                          //                         width: 1),
+                          //                   ),
+                          //                   child: Row(
+                          //                     mainAxisAlignment:
+                          //                         MainAxisAlignment
+                          //                             .spaceBetween,
+                          //                     children: [
+                          //                       Text(
+                          //                         'Select Options',
+                          //                         style: TextStyle(
+                          //                           color: Colors.white
+                          //                               .withOpacity(0.8),
+                          //                           fontSize:
+                          //                               14, // Smaller font
+                          //                         ),
+                          //                       ),
+                          //                       Icon(
+                          //                         Icons.arrow_drop_down,
+                          //                         color: Colors.white,
+                          //                         size: 20, // Smaller icon
+                          //                       ),
+                          //                     ],
+                          //                   ),
+                          //                 ),
+                          //               ],
+                          //             ),
+                          //           )
+                          //         ],
+                          //       ),
+                          //     ),
+                          //     // Dot indicators for pagination
+                          //     Padding(
+                          //       padding: const EdgeInsets.only(bottom: 16.0),
+                          //       child: Row(
+                          //         mainAxisAlignment: MainAxisAlignment.center,
+                          //         children: List.generate(
+                          //           2,
+                          //           (index) => _buildDotIndicator(index),
+                          //         ),
+                          //       ),
+                          //     ),
+                          //   ],
+                          // ),
+                          _buildInvestmentWalletSlide(),
                           // // Golden tape profit container
                           // Padding(
                           //   padding:
@@ -1741,6 +1808,345 @@ class _HomeScreenState extends State<HomeScreen> {
           maxLines: 1,
         ),
       ],
+    );
+  }
+
+  // Replace your current investment wallet slide with this updated version
+  Widget _buildInvestmentWalletSlide() {
+    return Container(
+      margin: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.purple.withOpacity(0.6),
+            Colors.blue.withOpacity(0.4),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'INVESTMENT WALLET',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.account_balance_wallet,
+                  color: Colors.amber, size: 22),
+              const SizedBox(width: 6),
+              _isLoadingDeposits
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      'LKR ${_totalDepositAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isDropdownOpen = !_isDropdownOpen;
+              });
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+                border:
+                    Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Deposit History',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 14,
+                    ),
+                  ),
+                  Icon(
+                    _isDropdownOpen
+                        ? Icons.arrow_drop_up
+                        : Icons.arrow_drop_down,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Dropdown content
+          if (_isDropdownOpen) _buildDropdownContent(),
+        ],
+      ),
+    );
+  }
+
+// Create a method to build the dropdown content
+  Widget _buildDropdownContent() {
+    if (_isLoadingDeposits) {
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 2,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_userDeposits.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Center(
+          child: Text(
+            'No deposits found',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.8),
+              fontSize: 14,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'Date',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'Amount',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'Type',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            constraints: BoxConstraints(
+              maxHeight: 120, // Limit height to avoid too much space
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              physics: const BouncingScrollPhysics(),
+              itemCount: _userDeposits.length,
+              itemBuilder: (context, index) {
+                final deposit = _userDeposits[index];
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                  decoration: BoxDecoration(
+                    border: index < _userDeposits.length - 1
+                        ? Border(
+                            bottom: BorderSide(
+                              color: Colors.white.withOpacity(0.1),
+                              width: 1,
+                            ),
+                          )
+                        : null,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          _formatDate(deposit.createdAt),
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'LKR ${deposit.amount.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: deposit.purpose == 'investment'
+                                ? Colors.green.withOpacity(0.3)
+                                : Colors.blue.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            deposit.purpose == 'investment'
+                                ? 'Investment'
+                                : 'Coin',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.2),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(6),
+                bottomRight: Radius.circular(6),
+              ),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Investment Deposits:',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                    Text(
+                      'LKR ${_totalInvestmentDeposits.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Coin Deposits:',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                    Text(
+                      'LKR ${_totalCoinDeposits.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
