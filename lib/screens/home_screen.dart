@@ -308,33 +308,65 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      // Add a timeout to prevent indefinite loading
-      final response = await _coinService
-          .getUserCoins(_userId)
-          .timeout(const Duration(seconds: 10), onTimeout: () {
-        throw TimeoutException('Connection timed out. Please try again.');
-      });
+      // First try to get the coin balance directly from the API
+      final response = await _coinService.getUserCoinBalance(_userId);
 
       if (response['success']) {
         setState(() {
-          _userCoinCount = response['coinData'].coinCount ?? 0.0;
+          _userCoinCount = response['balance'] ?? 0.0;
           _userCoinValueLKR = _userCoinCount * _coinValue;
           _isLoadingUserCoins = false;
         });
+        print('User coin balance loaded: $_userCoinCount');
       } else {
-        setState(() {
-          _userCoinsError = response['message'] ?? 'Failed to load user coins';
-          _isLoadingUserCoins = false;
-        });
+        // If direct method fails, try to get from investment summary
+        if (_investmentSummary != null) {
+          setState(() {
+            _userCoinCount = _investmentSummary!.currentCoinBalance;
+            _userCoinValueLKR = _userCoinCount * _coinValue;
+            _isLoadingUserCoins = false;
+          });
+          print('User coin balance loaded from summary: $_userCoinCount');
+        } else {
+          setState(() {
+            _userCoinsError =
+                response['message'] ?? 'Failed to load user coins';
+            _isLoadingUserCoins = false;
+          });
+          print('Failed to load user coins: $_userCoinsError');
+        }
       }
     } catch (e) {
       setState(() {
-        _userCoinsError = e is TimeoutException
-            ? 'Connection timed out'
-            : 'Error loading user coins';
+        _userCoinsError = 'Error loading user coins';
         _isLoadingUserCoins = false;
       });
       print('Error loading user coins: $e');
+    }
+  }
+
+  // Add investment summary object
+  UserInvestmentSummary? _investmentSummary;
+
+  Future<void> _loadInvestmentSummary() async {
+    try {
+      final response = await _coinService.getUserInvestmentSummary(_userId);
+
+      if (response['success']) {
+        setState(() {
+          _investmentSummary = response['summary'];
+          // Update coin count if not already set
+          if (_userCoinCount <= 0) {
+            _userCoinCount = _investmentSummary!.currentCoinBalance;
+            _userCoinValueLKR = _userCoinCount * _coinValue;
+          }
+        });
+        print('Investment summary loaded');
+      } else {
+        print('Failed to load investment summary: ${response['message']}');
+      }
+    } catch (e) {
+      print('Error loading investment summary: $e');
     }
   }
 
@@ -391,8 +423,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _userCoinInfoWidget() {
-    // Directly return the content without checking loading state
+  _userCoinInfoWidget() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -410,25 +441,161 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             const Icon(Icons.monetization_on, color: Colors.amber, size: 24),
             const SizedBox(width: 8),
-            Text(
-              '${_userCoinCount.toStringAsFixed(2)} Coins',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            _isLoadingUserCoins
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ))
+                : Text(
+                    '${_userCoinCount.toStringAsFixed(2)} Coins',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
           ],
         ),
         const SizedBox(height: 8),
-        Text(
-          'Value: LKR ${_userCoinValueLKR.toStringAsFixed(2)}',
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
-            fontSize: 16,
+        _isLoadingUserCoins
+            ? Text(
+                'Loading value...',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 16,
+                ),
+              )
+            : Text(
+                'Value: LKR ${_userCoinValueLKR.toStringAsFixed(2)}',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 16,
+                ),
+              ),
+      ],
+    );
+  }
+
+  // Investment summary widget to show coin deposits and investment deposits
+  Widget _investmentSummaryWidget() {
+    if (_investmentSummary == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blueGrey.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Center(
+            child: Text(
+              'Investment summary not available',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ),
-      ],
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.indigo.withOpacity(0.7),
+              Colors.purple.withOpacity(0.5),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Investment Summary',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  'Total: \$${_investmentSummary!.totalDeposits.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(color: Colors.white30),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Investment Deposits:',
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
+                Text(
+                  '\$${_investmentSummary!.investmentsTotal.toStringAsFixed(2)}',
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Coin Deposits:',
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
+                Text(
+                  '\$${_investmentSummary!.coinPurchasesTotal.toStringAsFixed(2)}',
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            if (_investmentSummary!.pendingDepositsCount > 0) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Pending Deposits:',
+                    style: TextStyle(color: Colors.amber, fontSize: 14),
+                  ),
+                  Text(
+                    '${_investmentSummary!.pendingDepositsCount} pending',
+                    style: const TextStyle(color: Colors.amber, fontSize: 14),
+                  ),
+                ],
+              ),
+            ]
+          ],
+        ),
+      ),
     );
   }
 
@@ -834,6 +1001,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     MainAxisAlignment.center,
                                                 children: [
                                                   const Text(
+                                                    //7135184230
                                                     'Investment Profit',
                                                     style: TextStyle(
                                                       color: Colors.white,
