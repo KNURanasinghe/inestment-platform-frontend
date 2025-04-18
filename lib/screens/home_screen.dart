@@ -380,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Center(
         child: Text(
-          'Item ${index + 1}',
+          'Current Coin Rate 1 Coin = LKR${_coinValue.toStringAsFixed(2)}',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -497,7 +497,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10.0, vertical: 2.0),
-                            child: Container(
+                            child: SizedBox(
                               height: 70,
                               child: GestureDetector(
                                 onPanDown: (_) {
@@ -760,73 +760,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 20),
 
                           // Golden tape upcoming store container
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 20.0),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 10.0, horizontal: 16.0),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    const Color(0xFFFFD700).withOpacity(0.8),
-                                    const Color(0xFFF5DEB3).withOpacity(0.9),
-                                  ],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Flexible(
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.store,
-                                          color: Color(0xFF8B4513),
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Flexible(
-                                          child: const Text(
-                                            'Upcoming Store',
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              color: Color(0xFF8B4513),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Coming Soon',
-                                    style: TextStyle(
-                                      color: Color(0xFF8B4513),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
 
                           // Current rate container
                           Padding(
@@ -1097,6 +1030,73 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
 
+                          const SizedBox(height: 20),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 20.0),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 30.0, horizontal: 16.0),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFFFFD700).withOpacity(0.8),
+                                    const Color(0xFFF5DEB3).withOpacity(0.9),
+                                  ],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Flexible(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.store,
+                                          color: Color(0xFF8B4513),
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: const Text(
+                                            'Upcoming Store',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: Color(0xFF8B4513),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Coming Soon',
+                                    style: TextStyle(
+                                      color: Color(0xFF8B4513),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                           const SizedBox(height: 60),
                         ],
                       ),
