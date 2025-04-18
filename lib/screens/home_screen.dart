@@ -56,6 +56,12 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingReferrals = true;
   String _referralsError = '';
 
+// Add these variables to your _HomeScreenState class
+  bool _hasTodayProfit = false;
+  double _todayProfitAmount = 0.0;
+  bool _isLoadingTodayProfit = true;
+  bool _isClaimingProfit = false;
+
   // Services
   final UserApiService _userApiService = UserApiService(
     baseUrl: 'http://145.223.21.62:5021',
@@ -148,6 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _loadCoinValue(),
         _loadInvestmentProfits(),
         _loadReferrals(),
+        _loadTodayProfit(),
       ]);
       await _loadUserCoins();
       _calculateTotalIncome();
@@ -159,6 +166,240 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     }
+  }
+
+// Add this method to check for today's unclaimed profits
+  Future<void> _loadTodayProfit() async {
+    setState(() {
+      _isLoadingTodayProfit = true;
+    });
+
+    try {
+      final response = await _investmentService.getTodayProfits(_userId);
+
+      if (response['success']) {
+        final totalProfit = response['totalProfit'] ?? 0.0;
+        final count = response['count'] ?? 0;
+
+        setState(() {
+          _hasTodayProfit = totalProfit > 0 && count > 0;
+          _todayProfitAmount = totalProfit;
+          _isLoadingTodayProfit = false;
+          print('has today profit $_hasTodayProfit');
+        });
+
+        print(
+            'Today\'s profit loaded: $_todayProfitAmount, Available: $_hasTodayProfit');
+      } else {
+        setState(() {
+          _hasTodayProfit = false;
+          _todayProfitAmount = 0.0;
+          _isLoadingTodayProfit = false;
+        });
+        print('No profits available today or error: ${response['message']}');
+      }
+    } catch (e) {
+      setState(() {
+        _hasTodayProfit = false;
+        _todayProfitAmount = 0.0;
+        _isLoadingTodayProfit = false;
+      });
+      print('Error loading today\'s profit: $e');
+    }
+  }
+
+// Add this method to claim today's profit
+  Future<void> _claimTodayProfit() async {
+    if (_isClaimingProfit) return; // Prevent double-clicking
+
+    setState(() {
+      _isClaimingProfit = true;
+    });
+
+    try {
+      final response = await _investmentService.claimTodayProfits(_userId);
+
+      if (response['success']) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Successfully claimed ${response['totalProfit'].toStringAsFixed(2)} LKR'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Refresh data
+        await _loadTodayProfit();
+        await _loadUserCoins();
+
+        setState(() {
+          _hasTodayProfit = false;
+        });
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Failed to claim profit'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error claiming profit: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      print('Error claiming today\'s profit: $e');
+    } finally {
+      setState(() {
+        _isClaimingProfit = false;
+      });
+    }
+  }
+
+// Create a widget for today's profit container
+  Widget _buildTodayProfitContainer() {
+    if (_isLoadingTodayProfit) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFFFFD700).withOpacity(0.8),
+                const Color(0xFFF5DEB3).withOpacity(0.9),
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Center(
+            child: SizedBox(
+              height: 24,
+              width: 24,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (!_hasTodayProfit) {
+      // Return nothing if no profit is available
+      return SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.green.withOpacity(0.8),
+              Colors.green.withOpacity(0.6),
+            ],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.monetization_on,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: const Text(
+                          'Today\'s Profit Available!',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'LKR ${_todayProfitAmount.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isClaimingProfit ? null : _claimTodayProfit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.red.withOpacity(0.5),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                child: _isClaimingProfit
+                    ? SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text('CLAIM NOW'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _loadUserData() async {
@@ -539,7 +780,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Text(
-                  'Total: \$${_investmentSummary!.totalDeposits.toStringAsFixed(2)}',
+                  'Total: LKR${_investmentSummary!.totalDeposits.toStringAsFixed(2)}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -557,7 +798,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(color: Colors.white, fontSize: 14),
                 ),
                 Text(
-                  '\$${_investmentSummary!.investmentsTotal.toStringAsFixed(2)}',
+                  'LKR${_investmentSummary!.investmentsTotal.toStringAsFixed(2)}',
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
               ],
@@ -571,7 +812,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(color: Colors.white, fontSize: 14),
                 ),
                 Text(
-                  '\$${_investmentSummary!.coinPurchasesTotal.toStringAsFixed(2)}',
+                  'LKR${_investmentSummary!.coinPurchasesTotal.toStringAsFixed(2)}',
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
               ],
@@ -804,75 +1045,80 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
 
-                          // Golden tape profit container
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 20.0),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 12.0, horizontal: 16.0),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    const Color(0xFFFFD700).withOpacity(0.8),
-                                    const Color(0xFFF5DEB3).withOpacity(0.9),
-                                  ],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Flexible(
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.trending_up,
-                                          color: Color(0xFF8B4513),
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Flexible(
-                                          child: const Text(
-                                            'Today\'s Profit',
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              color: Color(0xFF8B4513),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '\$${(_totalIncome * 0.05).toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF8B4513),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
+                          // // Golden tape profit container
+                          // Padding(
+                          //   padding:
+                          //       const EdgeInsets.symmetric(horizontal: 20.0),
+                          //   child: Container(
+                          //     width: double.infinity,
+                          //     padding: const EdgeInsets.symmetric(
+                          //         vertical: 12.0, horizontal: 16.0),
+                          //     decoration: BoxDecoration(
+                          //       gradient: LinearGradient(
+                          //         colors: [
+                          //           const Color(0xFFFFD700).withOpacity(0.8),
+                          //           const Color(0xFFF5DEB3).withOpacity(0.9),
+                          //         ],
+                          //         begin: Alignment.centerLeft,
+                          //         end: Alignment.centerRight,
+                          //       ),
+                          //       borderRadius: BorderRadius.circular(10),
+                          //       boxShadow: [
+                          //         BoxShadow(
+                          //           color: Colors.black.withOpacity(0.1),
+                          //           blurRadius: 4,
+                          //           offset: const Offset(0, 2),
+                          //         ),
+                          //       ],
+                          //     ),
+                          //     child: Row(
+                          //       mainAxisAlignment:
+                          //           MainAxisAlignment.spaceBetween,
+                          //       children: [
+                          //         Flexible(
+                          //           child: Row(
+                          //             mainAxisSize: MainAxisSize.min,
+                          //             children: [
+                          //               const Icon(
+                          //                 Icons.trending_up,
+                          //                 color: Color(0xFF8B4513),
+                          //                 size: 20,
+                          //               ),
+                          //               const SizedBox(width: 8),
+                          //               Flexible(
+                          //                 child: const Text(
+                          //                   'Today\'s Profit',
+                          //                   overflow: TextOverflow.ellipsis,
+                          //                   style: TextStyle(
+                          //                     color: Color(0xFF8B4513),
+                          //                     fontWeight: FontWeight.bold,
+                          //                     fontSize: 14,
+                          //                   ),
+                          //                 ),
+                          //               ),
+                          //             ],
+                          //           ),
+                          //         ),
+                          //         const SizedBox(width: 8),
+                          //         Text(
+                          //           'LKR${(_totalIncome * 0.05).toStringAsFixed(2)}',
+                          //           style: const TextStyle(
+                          //             color: Color(0xFF8B4513),
+                          //             fontWeight: FontWeight.bold,
+                          //             fontSize: 16,
+                          //           ),
+                          //         ),
+                          //       ],
+                          //     ),
+                          //   ),
+                          // ),
+                          // const SizedBox(height: 12),
 
+// Add today's profit container (will only show when profit is available)
+                          _buildTodayProfitContainer(),
+                          _hasTodayProfit
+                              ? const SizedBox(height: 12)
+                              : SizedBox.shrink(),
                           // Total income container
                           Container(
                             height: 150,
@@ -903,7 +1149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        '\$${_totalIncome.toStringAsFixed(2)}',
+                                        'LKR${_totalIncome.toStringAsFixed(2)}',
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 22,
@@ -954,8 +1200,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ? _errorCoinValueWidget(
                                             width, _coinValueError)
                                         : _infoWidget2(
-                                            'Current Coin Rate',
-                                            '1 Coin = LKR${_coinValue.toStringAsFixed(2)}',
+                                            'Current Balance',
+                                            'LKR ${_investmentProfit + _referralIncome}',
                                             width),
                               ),
                             ),
@@ -1337,12 +1583,12 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                "Investment: \$${referral.totalInvestment?.toStringAsFixed(2) ?? '0.00'}",
+                "Investment: LKR${referral.totalInvestment?.toStringAsFixed(2) ?? '0.00'}",
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
               const SizedBox(height: 4),
               Text(
-                "Coins: \$${referral.totalCoinPurchase?.toStringAsFixed(2) ?? '0.00'}",
+                "Coins: LKR${referral.totalCoinPurchase?.toStringAsFixed(2) ?? '0.00'}",
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
             ],
