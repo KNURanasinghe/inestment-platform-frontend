@@ -981,7 +981,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     // Second slide - Editable text
                                     Container(
                                       margin: const EdgeInsets.all(16.0),
-                                      padding: const EdgeInsets.all(16.0),
+                                      padding: const EdgeInsets.all(
+                                          12.0), // Reduced padding
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: [
@@ -1002,32 +1003,86 @@ class _HomeScreenState extends State<HomeScreen> {
                                           ),
                                         ],
                                       ),
-                                      child: Center(
-                                        child: TextField(
-                                          controller: _textControllers[0],
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                          maxLines: 3,
-                                          decoration: InputDecoration(
-                                            border: InputBorder.none,
-                                            hintText: 'Enter slide text',
-                                            hintStyle: TextStyle(
-                                              color:
-                                                  Colors.white.withOpacity(0.7),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize
+                                            .min, // Ensure minimal height
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Text(
+                                            'INVESTMENT WALLET',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16, // Smaller font
+                                              fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                          onChanged: (value) {
-                                            setState(() {
-                                              slideTexts[0] = value;
-                                            });
-                                          },
-                                        ),
+                                          const SizedBox(
+                                              height: 12), // Reduced spacing
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(
+                                                  Icons.account_balance_wallet,
+                                                  color: Colors.amber,
+                                                  size: 22), // Smaller icon
+                                              const SizedBox(
+                                                  width: 6), // Reduced spacing
+                                              Text(
+                                                '\$${_investmentProfit.toStringAsFixed(2)}',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 22, // Smaller font
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(
+                                              height: 12), // Reduced spacing
+                                          // Empty dropdown button with reduced height
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                                vertical: 6), // Smaller padding
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  Colors.white.withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      6), // Smaller radius
+                                              border: Border.all(
+                                                  color: Colors.white
+                                                      .withOpacity(0.3),
+                                                  width: 1),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  'Select Options',
+                                                  style: TextStyle(
+                                                    color: Colors.white
+                                                        .withOpacity(0.8),
+                                                    fontSize:
+                                                        14, // Smaller font
+                                                  ),
+                                                ),
+                                                Icon(
+                                                  Icons.arrow_drop_down,
+                                                  color: Colors.white,
+                                                  size: 20, // Smaller icon
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
+                                    )
                                   ],
                                 ),
                               ),
@@ -1656,6 +1711,36 @@ class _HomeScreenState extends State<HomeScreen> {
               style: AppTheme.textStyleAmount.copyWith(color: Colors.white)),
         ],
       ),
+    );
+  }
+
+  Widget _buildWalletInfoItemCompact(String label, String value) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 12, // Smaller font
+          ),
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
+        const SizedBox(height: 2), // Reduced spacing
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 14, // Smaller font
+          ),
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
+      ],
     );
   }
 }
