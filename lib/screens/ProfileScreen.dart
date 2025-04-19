@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import, unused_element
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -13,7 +15,8 @@ import 'package:flutter/services.dart';
 import '../services/user_service.dart';
 
 class AccountPage extends StatefulWidget {
-  const AccountPage({super.key});
+  final String? username;
+  const AccountPage({super.key, required this.username});
 
   @override
   State<AccountPage> createState() => _AccountPageState();
@@ -38,7 +41,7 @@ class _AccountPageState extends State<AccountPage> {
     final refKey = await UserApiService.getUserRef();
     setState(() {
       isLoading = true;
-      refcode = refKey!;
+      refcode = refKey ?? '';
     });
 
     try {
@@ -290,8 +293,8 @@ class _AccountPageState extends State<AccountPage> {
             children: [
               Row(
                 children: [
-                  const Text(
-                    "Alexander Mitchell",
+                  Text(
+                    widget.username ?? "Alexander Mitchell",
                     style: TextStyle(fontSize: 18, color: Colors.white),
                   ),
                   if (isKycVerified)

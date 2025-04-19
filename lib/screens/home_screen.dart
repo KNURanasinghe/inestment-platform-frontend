@@ -1675,7 +1675,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: AppTheme.bottomNavigationBar(context, 0),
+      bottomNavigationBar:
+          AppTheme.bottomNavigationBar(context, 0, username: username),
     );
   }
 

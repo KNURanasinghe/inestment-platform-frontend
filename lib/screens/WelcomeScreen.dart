@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'package:flutter/material.dart';
 import 'package:investment_plan_app/screens/home_screen.dart';
 import 'package:investment_plan_app/services/user_service.dart';

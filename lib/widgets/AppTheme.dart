@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:investment_plan_app/screens/SetPinNavigator.dart';
 
+import '../screens/ProfileScreen.dart';
+
 class AppTheme {
   static const Color backgroundColor = Color(0xFF1E1A4D);
   static const Color textFieldColor = Color(0x44FFFFFF);
@@ -79,14 +81,17 @@ class AppTheme {
     );
   }
 
-  static BottomNavigationBar bottomNavigationBar(BuildContext context, int currentIndex) {
+  static BottomNavigationBar bottomNavigationBar(
+      BuildContext context, int currentIndex,
+      {String? username}) {
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: (index) {
         if (index == currentIndex) return; // Prevent unnecessary navigation
         switch (index) {
           case 0:
-            Navigator.pushReplacementNamed(context, '/home'); // Replace with actual route
+            Navigator.pushReplacementNamed(
+                context, '/home'); // Replace with actual route
             break;
           case 1:
             Navigator.pushReplacementNamed(context, '/deposit');
@@ -101,7 +106,13 @@ class AppTheme {
             Navigator.pushReplacementNamed(context, '/history');
             break;
           case 4:
-            Navigator.pushReplacementNamed(context, '/profile');
+            // Pass the username directly to AccountPage
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AccountPage(username: username),
+              ),
+            );
             break;
         }
       },
@@ -111,17 +122,17 @@ class AppTheme {
       unselectedItemColor: inactiveColor,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: 'Deposit'),
-        BottomNavigationBarItem(icon: Icon(Icons.swap_horiz), label: 'Withdraw'),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet), label: 'Deposit'),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.swap_horiz), label: 'Withdraw'),
         BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
       ],
     );
   }
 
-
-
-  static Widget appBackground(){
+  static Widget appBackground() {
     return Stack(
       children: [
         Positioned(
@@ -135,9 +146,11 @@ class AppTheme {
               ),
               Positioned.fill(
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Blur effect
+                  filter:
+                      ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Blur effect
                   child: Container(
-                    color: Colors.transparent, // Ensures only the vector is blurred
+                    color: Colors
+                        .transparent, // Ensures only the vector is blurred
                   ),
                 ),
               ),
@@ -155,9 +168,11 @@ class AppTheme {
               ),
               Positioned.fill(
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Blur effect
+                  filter:
+                      ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Blur effect
                   child: Container(
-                    color: Colors.transparent, // Ensures only the vector is blurred
+                    color: Colors
+                        .transparent, // Ensures only the vector is blurred
                   ),
                 ),
               ),
@@ -175,9 +190,11 @@ class AppTheme {
               ),
               Positioned.fill(
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Blur effect
+                  filter:
+                      ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Blur effect
                   child: Container(
-                    color: Colors.transparent, // Ensures only the vector is blurred
+                    color: Colors
+                        .transparent, // Ensures only the vector is blurred
                   ),
                 ),
               ),
@@ -195,9 +212,11 @@ class AppTheme {
               ),
               Positioned.fill(
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Blur effect
+                  filter:
+                      ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Blur effect
                   child: Container(
-                    color: Colors.transparent, // Ensures only the vector is blurred
+                    color: Colors
+                        .transparent, // Ensures only the vector is blurred
                   ),
                 ),
               ),
@@ -284,6 +303,4 @@ class AppTheme {
     color: Colors.white.withOpacity(0.8),
     fontWeight: FontWeight.w400,
   );
-
 }
-

@@ -67,7 +67,9 @@ class MyApp extends StatelessWidget {
         '/deposit': (context) => const DepositScreen(),
         '/withdraw': (context) => const WithdrawPage(),
         '/history': (context) => const TransactionHistoryPage(),
-        '/profile': (context) => const AccountPage(),
+        '/profile': (context) => const AccountPage(
+              username: '',
+            ),
         '/depositfund': (context) => const DepositFundScreen(),
         '/bankdetails': (context) => const BankDetailsScreen(),
         '/paymentdetails': (context) => const BankDetailsScreen(),

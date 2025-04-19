@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'package:flutter/material.dart';
 import 'package:investment_plan_app/screens/ProfileScreen.dart';
 import 'package:investment_plan_app/services/user_service.dart';
@@ -156,7 +158,9 @@ class _SetPinNavigatorState extends State<SetPinNavigator> {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AccountPage(),
+                          builder: (context) => const AccountPage(
+                            username: '',
+                          ),
                         ),
                       );
                     },
