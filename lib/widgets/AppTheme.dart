@@ -13,6 +13,10 @@ class AppTheme {
   static const Color primaryColor = Color(0xFF2F0D68);
   static const Color inactiveColor = Color(0xFF9CA3AF);
 
+  static const Color secondaryColor =
+      Color(0xFF03DAC6); // Replace with your secondary color
+  static const Color slideContainerColor = Color(0xFF1E88E5);
+
   static TextStyle textStyleTitle = const TextStyle(
     fontSize: 18,
     fontWeight: FontWeight.bold,

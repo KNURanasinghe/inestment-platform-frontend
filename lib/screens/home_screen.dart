@@ -18,12 +18,19 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
   final int _currentIndex = 0;
   double _userCoinCount = 0.0;
   double _userCoinValueLKR = 0.0;
   bool _isLoadingUserCoins = true;
   String _userCoinsError = '';
+  bool _isLoadingProfile = true; // Add this line
+  bool _isLoadingInvestments = true; // Add this line
+
+  @override
+  bool get wantKeepAlive => true;
+  late final ScrollController _scrollController;
 
   // Add a page controller to control the PageView
   final PageController _pageController = PageController();
@@ -110,12 +117,14 @@ class _HomeScreenState extends State<HomeScreen> {
     _autoScrollController.dispose();
     // Cancel the auto-scroll timer
     _autoScrollTimer?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
     // Initialize with default values to prevent loading indicators
     _userCoinCount = 0.0;
     _userCoinValueLKR = 0.0;
@@ -157,25 +166,60 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _loadAllData() async {
-    await _loadUserData();
-    if (_userId > 0) {
-      await Future.wait([
-        _loadCoinValue(),
-        _loadInvestmentProfits(),
-        _loadReferrals(),
-        _loadTodayProfit(),
-        _loadUserDeposits(),
-      ]);
-      await _loadUserCoins();
+  // Coin value modification
+  void updateCoinValue(double newValue) {
+    if (mounted) {
+      setState(() {
+        _coinValue = newValue;
+        _userCoinValueLKR = _userCoinCount * newValue;
+      });
+      _calculateTotalIncome();
+    }
+  }
+
+// Investment profit adjustment
+  void adjustInvestmentProfit(double adjustment) {
+    if (mounted) {
+      setState(() {
+        _investmentProfit += adjustment;
+        _totalIncome = _investmentProfit + _referralIncome;
+      });
+    }
+  }
+
+  Future<void> _loadAllData({bool forceRefresh = false}) async {
+    try {
+      // Load critical user data first
+      await _loadUserData();
+
+      if (_userId <= 0) return;
+
+      // Parallel loading with error isolation
+      final results = await Future.wait([
+        _loadCoinValue().catchError((e) => print("Coin error: $e")),
+        _loadInvestmentProfits().catchError((e) => print("Invest error: $e")),
+        _loadReferrals().catchError((e) => print("Referral error: $e")),
+      ], eagerError: false);
+
+      // Serial loading for dependent operations
+      await _loadTodayProfit();
+      await _loadUserDeposits();
+
+      if (forceRefresh) {
+        await _loadUserCoins();
+      }
+
       _calculateTotalIncome();
 
-      // Force refresh the UI
       if (mounted) {
         setState(() {
-          // Just to trigger a rebuild
+          _isLoadingProfile = false;
+          _isLoadingCoinValue = false;
+          _isLoadingInvestments = false;
         });
       }
+    } catch (e) {
+      print("Global load error: $e");
     }
   }
 
@@ -941,6 +985,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     double width = MediaQuery.of(context).size.width;
     double height = MediaQuery.of(context).size.height;
+    super.build(context); // Call super.build to maintain state
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -983,696 +1028,712 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        child: Column(
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  AppTheme.appBackground(),
-                  SizedBox(
-                    width: width,
-                    height: height,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Column(
-                        children: [
-                          // Auto-scrolling horizontal containers
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10.0, vertical: 2.0),
-                            child: SizedBox(
-                              height: 70,
-                              child: GestureDetector(
-                                onPanDown: (_) {
-                                  print(
-                                      'User interaction: Pausing auto-scroll');
-                                  _autoScrollTimer?.cancel();
-                                },
-                                onPanEnd: (_) {
-                                  print(
-                                      'User interaction ended: Resuming auto-scroll');
-                                  _startAutoScrolling();
-                                },
-                                child: PageView.builder(
-                                  controller: _autoScrollController,
-                                  itemCount: 10,
-                                  itemBuilder: (context, index) {
-                                    return _buildAutoScrollContainer(index);
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification is OverscrollNotification) {
+            _autoScrollTimer?.cancel();
+          }
+          return false;
+        },
+        child: RefreshIndicator(
+          onRefresh: () => _loadAllData(forceRefresh: true),
+          child: Column(
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    AppTheme.appBackground(),
+                    SizedBox(
+                      width: width,
+                      height: height,
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Column(
+                          children: [
+                            // Auto-scrolling horizontal containers
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10.0, vertical: 2.0),
+                              child: SizedBox(
+                                height: 70,
+                                child: GestureDetector(
+                                  onPanDown: (_) {
+                                    print(
+                                        'User interaction: Pausing auto-scroll');
+                                    _autoScrollTimer?.cancel();
                                   },
-                                  onPageChanged: (index) {
-                                    setState(() {
-                                      _autoScrollPage = index;
-                                      print('Page changed to: $index');
-                                    });
+                                  onPanEnd: (_) {
+                                    print(
+                                        'User interaction ended: Resuming auto-scroll');
+                                    _startAutoScrolling();
                                   },
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // Slidable containers with PageView
-                          Column(
-                            children: [
-                              SizedBox(
-                                height: 200,
-                                width: width,
-                                child: PageView(
-                                    controller: _pageController,
-                                    onPageChanged: (int page) {
+                                  child: PageView.builder(
+                                    controller: _autoScrollController,
+                                    itemCount: 10,
+                                    itemBuilder: (context, index) {
+                                      return _buildAutoScrollContainer(index);
+                                    },
+                                    onPageChanged: (index) {
                                       setState(() {
-                                        _currentPage = page;
+                                        _autoScrollPage = index;
+                                        print('Page changed to: $index');
                                       });
                                     },
-                                    children: [
-                                      // First slide - Coin information
-                                      Container(
-                                        margin: const EdgeInsets.all(16.0),
-                                        padding: const EdgeInsets.all(16.0),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              Colors.purple.withOpacity(0.6),
-                                              Colors.blue.withOpacity(0.4),
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                          borderRadius:
-                                              BorderRadius.circular(16.0),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color:
-                                                  Colors.black.withOpacity(0.1),
-                                              blurRadius: 10,
-                                              spreadRadius: 2,
-                                            ),
-                                          ],
-                                        ),
-                                        child: Center(
-                                          child: _userCoinInfoWidget(),
-                                        ),
-                                      ),
-
-                                      // Second slide - Editable text
-                                      //   Container(
-                                      //     margin: const EdgeInsets.all(16.0),
-                                      //     padding: const EdgeInsets.all(
-                                      //         12.0), // Reduced padding
-                                      //     decoration: BoxDecoration(
-                                      //       gradient: LinearGradient(
-                                      //         colors: [
-                                      //           Colors.purple.withOpacity(0.6),
-                                      //           Colors.blue.withOpacity(0.4),
-                                      //         ],
-                                      //         begin: Alignment.topLeft,
-                                      //         end: Alignment.bottomRight,
-                                      //       ),
-                                      //       borderRadius:
-                                      //           BorderRadius.circular(16.0),
-                                      //       boxShadow: [
-                                      //         BoxShadow(
-                                      //           color:
-                                      //               Colors.black.withOpacity(0.1),
-                                      //           blurRadius: 10,
-                                      //           spreadRadius: 2,
-                                      //         ),
-                                      //       ],
-                                      //     ),
-                                      //     child: Column(
-                                      //       mainAxisSize: MainAxisSize
-                                      //           .min, // Ensure minimal height
-                                      //       mainAxisAlignment:
-                                      //           MainAxisAlignment.center,
-                                      //       children: [
-                                      //         const Text(
-                                      //           'INVESTMENT WALLET',
-                                      //           style: TextStyle(
-                                      //             color: Colors.white,
-                                      //             fontSize: 16, // Smaller font
-                                      //             fontWeight: FontWeight.bold,
-                                      //           ),
-                                      //         ),
-                                      //         const SizedBox(
-                                      //             height: 12), // Reduced spacing
-                                      //         Row(
-                                      //           mainAxisAlignment:
-                                      //               MainAxisAlignment.center,
-                                      //           children: [
-                                      //             const Icon(
-                                      //                 Icons.account_balance_wallet,
-                                      //                 color: Colors.amber,
-                                      //                 size: 22), // Smaller icon
-                                      //             const SizedBox(
-                                      //                 width: 6), // Reduced spacing
-                                      //             Text(
-                                      //               '\$${_investmentProfit.toStringAsFixed(2)}',
-                                      //               style: const TextStyle(
-                                      //                 color: Colors.white,
-                                      //                 fontSize: 22, // Smaller font
-                                      //                 fontWeight: FontWeight.bold,
-                                      //               ),
-                                      //             ),
-                                      //           ],
-                                      //         ),
-                                      //         const SizedBox(
-                                      //             height: 12), // Reduced spacing
-                                      //         // Empty dropdown button with reduced height
-                                      //         Container(
-                                      //           width: double.infinity,
-                                      //           padding: const EdgeInsets.symmetric(
-                                      //               horizontal: 10,
-                                      //               vertical: 6), // Smaller padding
-                                      //           decoration: BoxDecoration(
-                                      //             color:
-                                      //                 Colors.white.withOpacity(0.1),
-                                      //             borderRadius:
-                                      //                 BorderRadius.circular(
-                                      //                     6), // Smaller radius
-                                      //             border: Border.all(
-                                      //                 color: Colors.white
-                                      //                     .withOpacity(0.3),
-                                      //                 width: 1),
-                                      //           ),
-                                      //           child: Row(
-                                      //             mainAxisAlignment:
-                                      //                 MainAxisAlignment
-                                      //                     .spaceBetween,
-                                      //             children: [
-                                      //               Text(
-                                      //                 'Select Options',
-                                      //                 style: TextStyle(
-                                      //                   color: Colors.white
-                                      //                       .withOpacity(0.8),
-                                      //                   fontSize:
-                                      //                       14, // Smaller font
-                                      //                 ),
-                                      //               ),
-                                      //               Icon(
-                                      //                 Icons.arrow_drop_down,
-                                      //                 color: Colors.white,
-                                      //                 size: 20, // Smaller icon
-                                      //               ),
-                                      //             ],
-                                      //           ),
-                                      //         ),
-                                      //       ],
-                                      //     ),
-                                      //   )
-                                      // ],
-                                      _buildInvestmentWalletSlide(),
-                                    ]),
-                              ),
-                              // Dot indicators for pagination
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 16.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: List.generate(
-                                    2,
-                                    (index) => _buildDotIndicator(index),
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-
-                          // // Golden tape profit container
-                          // Padding(
-                          //   padding:
-                          //       const EdgeInsets.symmetric(horizontal: 20.0),
-                          //   child: Container(
-                          //     width: double.infinity,
-                          //     padding: const EdgeInsets.symmetric(
-                          //         vertical: 12.0, horizontal: 16.0),
-                          //     decoration: BoxDecoration(
-                          //       gradient: LinearGradient(
-                          //         colors: [
-                          //           const Color(0xFFFFD700).withOpacity(0.8),
-                          //           const Color(0xFFF5DEB3).withOpacity(0.9),
-                          //         ],
-                          //         begin: Alignment.centerLeft,
-                          //         end: Alignment.centerRight,
-                          //       ),
-                          //       borderRadius: BorderRadius.circular(10),
-                          //       boxShadow: [
-                          //         BoxShadow(
-                          //           color: Colors.black.withOpacity(0.1),
-                          //           blurRadius: 4,
-                          //           offset: const Offset(0, 2),
-                          //         ),
-                          //       ],
-                          //     ),
-                          //     child: Row(
-                          //       mainAxisAlignment:
-                          //           MainAxisAlignment.spaceBetween,
-                          //       children: [
-                          //         Flexible(
-                          //           child: Row(
-                          //             mainAxisSize: MainAxisSize.min,
-                          //             children: [
-                          //               const Icon(
-                          //                 Icons.trending_up,
-                          //                 color: Color(0xFF8B4513),
-                          //                 size: 20,
-                          //               ),
-                          //               const SizedBox(width: 8),
-                          //               Flexible(
-                          //                 child: const Text(
-                          //                   'Today\'s Profit',
-                          //                   overflow: TextOverflow.ellipsis,
-                          //                   style: TextStyle(
-                          //                     color: Color(0xFF8B4513),
-                          //                     fontWeight: FontWeight.bold,
-                          //                     fontSize: 14,
-                          //                   ),
-                          //                 ),
-                          //               ),
-                          //             ],
-                          //           ),
-                          //         ),
-                          //         const SizedBox(width: 8),
-                          //         Text(
-                          //           'LKR${(_totalIncome * 0.05).toStringAsFixed(2)}',
-                          //           style: const TextStyle(
-                          //             color: Color(0xFF8B4513),
-                          //             fontWeight: FontWeight.bold,
-                          //             fontSize: 16,
-                          //           ),
-                          //         ),
-                          //       ],
-                          //     ),
-                          //   ),
-                          // ),
-                          // const SizedBox(height: 12),
-
-// Add today's profit container (will only show when profit is available)
-                          _buildTodayProfitContainer(),
-                          _hasTodayProfit
-                              ? const SizedBox(height: 12)
-                              : SizedBox.shrink(),
-                          // Total income container
-                          Container(
-                            height: 150,
-                            decoration: const BoxDecoration(
-                              image: DecorationImage(
-                                image: AssetImage('assets/total_bg.png'),
-                                fit: BoxFit.cover,
-                              ),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
+
+                            // Slidable containers with PageView
+                            Column(
                               children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Text(
-                                        'Your Total Income',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'LKR${_totalIncome.toStringAsFixed(2)}',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Investment + Referral Income',
-                                        style: TextStyle(
-                                          color: Colors.white.withOpacity(0.8),
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Golden tape upcoming store container
-
-                          // Current rate container
-                          Padding(
-                            padding: const EdgeInsets.only(
-                                left: 20, right: 20, top: 0, bottom: 20),
-                            child: Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey[300]!),
-                                gradient: LinearGradient(
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                  colors: [
-                                    Colors.indigo.withOpacity(0.1),
-                                    Colors.deepPurple.withOpacity(0.1),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: _isLoadingCoinValue
-                                    ? _loadingCoinValueWidget(width)
-                                    : _coinValueError.isNotEmpty
-                                        ? _errorCoinValueWidget(
-                                            width, _coinValueError)
-                                        : _infoWidget2(
-                                            'Current Balance',
-                                            'LKR ${_investmentProfit + _referralIncome}',
-                                            width),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          // Parallel Containers for profits
-                          Padding(
-                            padding: const EdgeInsets.only(left: 20, right: 20),
-                            child: Row(
-                              children: [
-                                // Investment profit container
-                                Expanded(
-                                  child: Container(
-                                    height: 120,
-                                    decoration: BoxDecoration(
-                                      border:
-                                          Border.all(color: Colors.grey[300]!),
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.blue.withOpacity(0.4),
-                                          Colors.white.withOpacity(0.3),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(6.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Icon(Icons.show_chart,
-                                              color: Colors.white, size: 16),
-                                          Expanded(
-                                            child: Center(
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  const Text(
-                                                    //7135184230
-                                                    'Investment Profit',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 14,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    '\$${_investmentProfit.toStringAsFixed(2)}',
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 13,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                // Referral income container
-                                Expanded(
-                                  child: Container(
-                                    height: 120,
-                                    decoration: BoxDecoration(
-                                      border:
-                                          Border.all(color: Colors.grey[300]!),
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.blue.withOpacity(0.4),
-                                          Colors.white.withOpacity(0.3),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(6.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Icon(Icons.people,
-                                              color: Colors.white, size: 16),
-                                          Expanded(
-                                            child: Center(
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  const Text(
-                                                    'Referral Gain',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 14,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    '\$${_referralIncome.toStringAsFixed(2)}',
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 13,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 30),
-
-                          // Level 1 Referrals Container
-                          Padding(
-                            padding: const EdgeInsets.only(left: 20, right: 20),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 16),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey[300]!),
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text(
-                                        'Level 1 Referrals',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 20),
-                                      ),
-                                      _isLoadingReferrals
-                                          ? const SizedBox(
-                                              width: 16,
-                                              height: 16,
-                                              child: CircularProgressIndicator(
-                                                color: Colors.white,
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                          : Text(
-                                              '${_directReferrals.length} users',
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 16),
-                                            ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-
-                                  // Referral list
-                                  if (_isLoadingReferrals)
-                                    const Center(
-                                      child: Padding(
-                                        padding: EdgeInsets.all(20.0),
-                                        child: Text(
-                                          'Loading your referrals...',
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                      ),
-                                    )
-                                  else if (_referralsError.isNotEmpty)
-                                    Center(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(20.0),
-                                        child: Text(
-                                          'Unable to load referrals: $_referralsError',
-                                          style:
-                                              TextStyle(color: Colors.red[300]),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                    )
-                                  else if (_directReferrals.isEmpty)
-                                    const Center(
-                                      child: Padding(
-                                        padding: EdgeInsets.all(20.0),
-                                        child: Column(
-                                          children: [
-                                            Icon(
-                                              Icons.people_outline,
-                                              color: Colors.white,
-                                              size: 48,
-                                            ),
-                                            SizedBox(height: 16),
-                                            Text(
-                                              'You don\'t have any referrals yet.\nInvite friends to earn commissions!',
-                                              style: TextStyle(
-                                                  color: Colors.white),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    ListView.builder(
-                                      shrinkWrap: true,
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      itemCount: _directReferrals.length,
-                                      itemBuilder: (context, index) {
-                                        final referral =
-                                            _directReferrals[index];
-                                        return _buildReferralTile(referral);
+                                SizedBox(
+                                  height: 200,
+                                  width: width,
+                                  child: PageView(
+                                      controller: _pageController,
+                                      onPageChanged: (int page) {
+                                        setState(() {
+                                          _currentPage = page;
+                                        });
                                       },
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
+                                      children: [
+                                        // First slide - Coin information
+                                        Container(
+                                          margin: const EdgeInsets.all(16.0),
+                                          padding: const EdgeInsets.all(16.0),
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                Colors.purple.withOpacity(0.6),
+                                                Colors.blue.withOpacity(0.4),
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(16.0),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black
+                                                    .withOpacity(0.1),
+                                                blurRadius: 10,
+                                                spreadRadius: 2,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Center(
+                                            child: _userCoinInfoWidget(),
+                                          ),
+                                        ),
 
-                          const SizedBox(height: 20),
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 20.0),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 30.0, horizontal: 16.0),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    const Color(0xFFFFD700).withOpacity(0.8),
-                                    const Color(0xFFF5DEB3).withOpacity(0.9),
-                                  ],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
+                                        // Second slide - Editable text
+                                        //   Container(
+                                        //     margin: const EdgeInsets.all(16.0),
+                                        //     padding: const EdgeInsets.all(
+                                        //         12.0), // Reduced padding
+                                        //     decoration: BoxDecoration(
+                                        //       gradient: LinearGradient(
+                                        //         colors: [
+                                        //           Colors.purple.withOpacity(0.6),
+                                        //           Colors.blue.withOpacity(0.4),
+                                        //         ],
+                                        //         begin: Alignment.topLeft,
+                                        //         end: Alignment.bottomRight,
+                                        //       ),
+                                        //       borderRadius:
+                                        //           BorderRadius.circular(16.0),
+                                        //       boxShadow: [
+                                        //         BoxShadow(
+                                        //           color:
+                                        //               Colors.black.withOpacity(0.1),
+                                        //           blurRadius: 10,
+                                        //           spreadRadius: 2,
+                                        //         ),
+                                        //       ],
+                                        //     ),
+                                        //     child: Column(
+                                        //       mainAxisSize: MainAxisSize
+                                        //           .min, // Ensure minimal height
+                                        //       mainAxisAlignment:
+                                        //           MainAxisAlignment.center,
+                                        //       children: [
+                                        //         const Text(
+                                        //           'INVESTMENT WALLET',
+                                        //           style: TextStyle(
+                                        //             color: Colors.white,
+                                        //             fontSize: 16, // Smaller font
+                                        //             fontWeight: FontWeight.bold,
+                                        //           ),
+                                        //         ),
+                                        //         const SizedBox(
+                                        //             height: 12), // Reduced spacing
+                                        //         Row(
+                                        //           mainAxisAlignment:
+                                        //               MainAxisAlignment.center,
+                                        //           children: [
+                                        //             const Icon(
+                                        //                 Icons.account_balance_wallet,
+                                        //                 color: Colors.amber,
+                                        //                 size: 22), // Smaller icon
+                                        //             const SizedBox(
+                                        //                 width: 6), // Reduced spacing
+                                        //             Text(
+                                        //               '\$${_investmentProfit.toStringAsFixed(2)}',
+                                        //               style: const TextStyle(
+                                        //                 color: Colors.white,
+                                        //                 fontSize: 22, // Smaller font
+                                        //                 fontWeight: FontWeight.bold,
+                                        //               ),
+                                        //             ),
+                                        //           ],
+                                        //         ),
+                                        //         const SizedBox(
+                                        //             height: 12), // Reduced spacing
+                                        //         // Empty dropdown button with reduced height
+                                        //         Container(
+                                        //           width: double.infinity,
+                                        //           padding: const EdgeInsets.symmetric(
+                                        //               horizontal: 10,
+                                        //               vertical: 6), // Smaller padding
+                                        //           decoration: BoxDecoration(
+                                        //             color:
+                                        //                 Colors.white.withOpacity(0.1),
+                                        //             borderRadius:
+                                        //                 BorderRadius.circular(
+                                        //                     6), // Smaller radius
+                                        //             border: Border.all(
+                                        //                 color: Colors.white
+                                        //                     .withOpacity(0.3),
+                                        //                 width: 1),
+                                        //           ),
+                                        //           child: Row(
+                                        //             mainAxisAlignment:
+                                        //                 MainAxisAlignment
+                                        //                     .spaceBetween,
+                                        //             children: [
+                                        //               Text(
+                                        //                 'Select Options',
+                                        //                 style: TextStyle(
+                                        //                   color: Colors.white
+                                        //                       .withOpacity(0.8),
+                                        //                   fontSize:
+                                        //                       14, // Smaller font
+                                        //                 ),
+                                        //               ),
+                                        //               Icon(
+                                        //                 Icons.arrow_drop_down,
+                                        //                 color: Colors.white,
+                                        //                 size: 20, // Smaller icon
+                                        //               ),
+                                        //             ],
+                                        //           ),
+                                        //         ),
+                                        //       ],
+                                        //     ),
+                                        //   )
+                                        // ],
+                                        _buildInvestmentWalletSlide(),
+                                      ]),
                                 ),
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
+                                // Dot indicators for pagination
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 16.0),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: List.generate(
+                                      2,
+                                      (index) => _buildDotIndicator(index),
+                                    ),
                                   ),
-                                ],
+                                ),
+                              ],
+                            ),
+
+                            // // Golden tape profit container
+                            // Padding(
+                            //   padding:
+                            //       const EdgeInsets.symmetric(horizontal: 20.0),
+                            //   child: Container(
+                            //     width: double.infinity,
+                            //     padding: const EdgeInsets.symmetric(
+                            //         vertical: 12.0, horizontal: 16.0),
+                            //     decoration: BoxDecoration(
+                            //       gradient: LinearGradient(
+                            //         colors: [
+                            //           const Color(0xFFFFD700).withOpacity(0.8),
+                            //           const Color(0xFFF5DEB3).withOpacity(0.9),
+                            //         ],
+                            //         begin: Alignment.centerLeft,
+                            //         end: Alignment.centerRight,
+                            //       ),
+                            //       borderRadius: BorderRadius.circular(10),
+                            //       boxShadow: [
+                            //         BoxShadow(
+                            //           color: Colors.black.withOpacity(0.1),
+                            //           blurRadius: 4,
+                            //           offset: const Offset(0, 2),
+                            //         ),
+                            //       ],
+                            //     ),
+                            //     child: Row(
+                            //       mainAxisAlignment:
+                            //           MainAxisAlignment.spaceBetween,
+                            //       children: [
+                            //         Flexible(
+                            //           child: Row(
+                            //             mainAxisSize: MainAxisSize.min,
+                            //             children: [
+                            //               const Icon(
+                            //                 Icons.trending_up,
+                            //                 color: Color(0xFF8B4513),
+                            //                 size: 20,
+                            //               ),
+                            //               const SizedBox(width: 8),
+                            //               Flexible(
+                            //                 child: const Text(
+                            //                   'Today\'s Profit',
+                            //                   overflow: TextOverflow.ellipsis,
+                            //                   style: TextStyle(
+                            //                     color: Color(0xFF8B4513),
+                            //                     fontWeight: FontWeight.bold,
+                            //                     fontSize: 14,
+                            //                   ),
+                            //                 ),
+                            //               ),
+                            //             ],
+                            //           ),
+                            //         ),
+                            //         const SizedBox(width: 8),
+                            //         Text(
+                            //           'LKR${(_totalIncome * 0.05).toStringAsFixed(2)}',
+                            //           style: const TextStyle(
+                            //             color: Color(0xFF8B4513),
+                            //             fontWeight: FontWeight.bold,
+                            //             fontSize: 16,
+                            //           ),
+                            //         ),
+                            //       ],
+                            //     ),
+                            //   ),
+                            // ),
+                            // const SizedBox(height: 12),
+
+                            // Add today's profit container (will only show when profit is available)
+                            _buildTodayProfitContainer(),
+                            _hasTodayProfit
+                                ? const SizedBox(height: 12)
+                                : SizedBox.shrink(),
+                            // Total income container
+                            Container(
+                              height: 150,
+                              decoration: const BoxDecoration(
+                                image: DecorationImage(
+                                  image: AssetImage('assets/total_bg.png'),
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                               child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  Flexible(
-                                    child: Row(
+                                  Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
                                       mainAxisSize: MainAxisSize.min,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        const Icon(
-                                          Icons.store,
-                                          color: Color(0xFF8B4513),
-                                          size: 18,
+                                        const Text(
+                                          'Your Total Income',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
-                                        const SizedBox(width: 8),
-                                        Flexible(
-                                          child: const Text(
-                                            'Upcoming Store',
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              color: Color(0xFF8B4513),
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'LKR${_totalIncome.toStringAsFixed(2)}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Investment + Referral Income',
+                                          style: TextStyle(
+                                            color:
+                                                Colors.white.withOpacity(0.8),
+                                            fontSize: 13,
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Coming Soon',
-                                    style: TextStyle(
-                                      color: Color(0xFF8B4513),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+
+                            // Golden tape upcoming store container
+
+                            // Current rate container
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  left: 20, right: 20, top: 0, bottom: 20),
+                              child: Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey[300]!),
+                                  gradient: LinearGradient(
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                    colors: [
+                                      Colors.indigo.withOpacity(0.1),
+                                      Colors.deepPurple.withOpacity(0.1),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: _isLoadingCoinValue
+                                      ? _loadingCoinValueWidget(width)
+                                      : _coinValueError.isNotEmpty
+                                          ? _errorCoinValueWidget(
+                                              width, _coinValueError)
+                                          : _infoWidget2(
+                                              'Current Balance',
+                                              'LKR ${_investmentProfit + _referralIncome}',
+                                              width),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            // Parallel Containers for profits
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 20, right: 20),
+                              child: Row(
+                                children: [
+                                  // Investment profit container
+                                  Expanded(
+                                    child: Container(
+                                      height: 120,
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                            color: Colors.grey[300]!),
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.blue.withOpacity(0.4),
+                                            Colors.white.withOpacity(0.3),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(15),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(6.0),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Icon(Icons.show_chart,
+                                                color: Colors.white, size: 16),
+                                            Expanded(
+                                              child: Center(
+                                                child: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    const Text(
+                                                      //7135184230
+                                                      'Investment Profit',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      '\$${_investmentProfit.toStringAsFixed(2)}',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 13,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  // Referral income container
+                                  Expanded(
+                                    child: Container(
+                                      height: 120,
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                            color: Colors.grey[300]!),
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.blue.withOpacity(0.4),
+                                            Colors.white.withOpacity(0.3),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(15),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(6.0),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Icon(Icons.people,
+                                                color: Colors.white, size: 16),
+                                            Expanded(
+                                              child: Center(
+                                                child: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    const Text(
+                                                      'Referral Gain',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      '\$${_referralIncome.toStringAsFixed(2)}',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 13,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 60),
-                        ],
+
+                            const SizedBox(height: 30),
+
+                            // Level 1 Referrals Container
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 20, right: 20),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 16),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey[300]!),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text(
+                                          'Level 1 Referrals',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 20),
+                                        ),
+                                        _isLoadingReferrals
+                                            ? const SizedBox(
+                                                width: 16,
+                                                height: 16,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  color: Colors.white,
+                                                  strokeWidth: 2,
+                                                ),
+                                              )
+                                            : Text(
+                                                '${_directReferrals.length} users',
+                                                style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 16),
+                                              ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    // Referral list
+                                    if (_isLoadingReferrals)
+                                      const Center(
+                                        child: Padding(
+                                          padding: EdgeInsets.all(20.0),
+                                          child: Text(
+                                            'Loading your referrals...',
+                                            style:
+                                                TextStyle(color: Colors.white),
+                                          ),
+                                        ),
+                                      )
+                                    else if (_referralsError.isNotEmpty)
+                                      Center(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(20.0),
+                                          child: Text(
+                                            'Unable to load referrals: $_referralsError',
+                                            style: TextStyle(
+                                                color: Colors.red[300]),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      )
+                                    else if (_directReferrals.isEmpty)
+                                      const Center(
+                                        child: Padding(
+                                          padding: EdgeInsets.all(20.0),
+                                          child: Column(
+                                            children: [
+                                              Icon(
+                                                Icons.people_outline,
+                                                color: Colors.white,
+                                                size: 48,
+                                              ),
+                                              SizedBox(height: 16),
+                                              Text(
+                                                'You don\'t have any referrals yet.\nInvite friends to earn commissions!',
+                                                style: TextStyle(
+                                                    color: Colors.white),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      ListView.builder(
+                                        shrinkWrap: true,
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
+                                        itemCount: _directReferrals.length,
+                                        itemBuilder: (context, index) {
+                                          final referral =
+                                              _directReferrals[index];
+                                          return _buildReferralTile(referral);
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20.0),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 30.0, horizontal: 16.0),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      const Color(0xFFFFD700).withOpacity(0.8),
+                                      const Color(0xFFF5DEB3).withOpacity(0.9),
+                                    ],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Flexible(
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.store,
+                                            color: Color(0xFF8B4513),
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            child: const Text(
+                                              'Upcoming Store',
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: Color(0xFF8B4513),
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Coming Soon',
+                                      style: TextStyle(
+                                        color: Color(0xFF8B4513),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 60),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       bottomNavigationBar:
