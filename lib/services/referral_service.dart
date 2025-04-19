@@ -28,7 +28,9 @@ class Referral {
       name: json['name'] ?? '',
       username: json['username'] ?? '',
       email: json['email'] ?? '',
-      isPayed: json['isPayed'] ?? false,
+      // Fix: Convert integer to boolean
+      isPayed: (json['isPayed'] ?? 0) ==
+          1, // or json['is_payed'] if that's the actual field name
       joinedAt: json['joinedAt'] != null
           ? DateTime.parse(json['joinedAt'])
           : DateTime.now(),
@@ -190,18 +192,28 @@ class ReferralService {
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
+        final data = json.decode(response.body);
 
-        final List<dynamic> directReferralsList = data['directReferrals'];
-        final List<Referral> directReferrals =
-            directReferralsList.map((item) => Referral.fromJson(item)).toList();
+        // Add validation
+        if (data['directReferrals'] == null ||
+            data['levelCounts'] == null ||
+            data['commissions'] == null) {
+          return {
+            'success': false,
+            'message': 'Invalid referral data structure',
+          };
+        }
 
-        final List<dynamic> levelCountsList = data['levelCounts'];
-        final List<LevelCount> levelCounts =
-            levelCountsList.map((item) => LevelCount.fromJson(item)).toList();
+        final List<Referral> directReferrals = (data['directReferrals'] as List)
+            .map((item) => Referral.fromJson(item))
+            .toList();
+
+        final List<LevelCount> levelCounts = (data['levelCounts'] as List)
+            .map((item) => LevelCount.fromJson(item))
+            .toList();
 
         final TotalCommissions commissions =
-            TotalCommissions.fromJson(data['commissions']);
+            TotalCommissions.fromJson(data['commissions'] ?? {});
 
         return {
           'success': true,
@@ -210,17 +222,16 @@ class ReferralService {
           'commissions': commissions,
         };
       } else {
-        final Map<String, dynamic> data = json.decode(response.body);
         return {
           'success': false,
-          'message': data['message'] ?? 'Failed to get referrals',
+          'message': 'Failed to load referrals: ${response.statusCode}',
         };
       }
     } catch (e) {
-      print('Error getting referrals: $e');
+      print('Error parsing referrals: $e');
       return {
         'success': false,
-        'message': 'Error getting referrals: $e',
+        'message': 'Error parsing referral data: $e',
       };
     }
   }

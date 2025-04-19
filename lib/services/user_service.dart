@@ -54,6 +54,7 @@ class UserApiService {
     String? refcode,
   }) async {
     try {
+      print('refcode $refcode');
       final response = await http.post(
         Uri.parse('$baseUrl/api/users/register'),
         headers: {'Content-Type': 'application/json'},
@@ -67,7 +68,7 @@ class UserApiService {
           'device_id': deviceId,
           'address': address,
           'country': country,
-          'ref_code': refcode,
+          'referrerCode': refcode,
         }),
       );
 
