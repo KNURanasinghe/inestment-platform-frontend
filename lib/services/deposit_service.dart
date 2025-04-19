@@ -37,7 +37,10 @@ class Deposit {
       createdAt: DateTime.parse(
           json['created_at'] ?? DateTime.now().toIso8601String()),
       username: json['username'],
-      purpose: json['purpose'] ?? 'investment', // Add purpose parsing
+      // Make sure to handle the purpose field properly
+      purpose: json['purpose'] != null
+          ? json['purpose'].toString().toLowerCase()
+          : 'investment',
     );
   }
 

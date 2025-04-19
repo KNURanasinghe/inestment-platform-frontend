@@ -199,15 +199,15 @@ class _HomeScreenState extends State<HomeScreen>
         _loadCoinValue().catchError((e) => print("Coin error: $e")),
         _loadInvestmentProfits().catchError((e) => print("Invest error: $e")),
         _loadReferrals().catchError((e) => print("Referral error: $e")),
+        _loadUserCoins().catchError(
+            (e) => print("User coins error: $e")), // Always load user coins
+        _loadInvestmentSummary().catchError(
+            (e) => print("Investment summary error: $e")), // Add this line
       ], eagerError: false);
 
       // Serial loading for dependent operations
       await _loadTodayProfit();
       await _loadUserDeposits();
-
-      if (forceRefresh) {
-        await _loadUserCoins();
-      }
 
       _calculateTotalIncome();
 
@@ -242,8 +242,17 @@ class _HomeScreenState extends State<HomeScreen>
 
       // Get all user deposits that are not pending
       final deposits = await depositService.getUserDeposits(_userId);
+      print('ALL user deposits received: ${deposits.length}');
+
+      // Debug purpose values
+      for (var deposit in deposits) {
+        print(
+            'Deposit ID: ${deposit.id}, Purpose: "${deposit.purpose}", Amount: ${deposit.amount}');
+      }
+
       final approvedDeposits =
           deposits.where((deposit) => !deposit.isPending).toList();
+      print('APPROVED user deposits: ${approvedDeposits.length}');
 
       // Calculate total deposit amount
       double totalAmount = 0.0;
@@ -254,8 +263,12 @@ class _HomeScreenState extends State<HomeScreen>
         totalAmount += deposit.amount;
         if (deposit.purpose == 'investment') {
           investmentAmount += deposit.amount;
+          print('Added to investment: ${deposit.amount}');
         } else if (deposit.purpose == 'buy_coin') {
           coinAmount += deposit.amount;
+          print('Added to coin: ${deposit.amount}');
+        } else {
+          print('UNKNOWN purpose: ${deposit.purpose}');
         }
       }
 
@@ -657,26 +670,6 @@ class _HomeScreenState extends State<HomeScreen>
       _totalIncome = _investmentProfit + _referralIncome;
     });
     print('Total income recalculated: $_totalIncome');
-  }
-
-// Optional: Add this helper method to ensure all values are in sync
-  Future<void> _refreshAfterClaim(double claimedAmount) async {
-    // First update local values for immediate UI feedback
-    setState(() {
-      _investmentProfit += claimedAmount;
-      _totalIncome = _investmentProfit + _referralIncome;
-      _hasTodayProfit = false;
-    });
-
-    // Then refresh from server to ensure everything is in sync
-    await Future.wait([
-      _loadTodayProfit(),
-      _loadUserCoins(),
-      _loadInvestmentProfits(),
-    ]);
-
-    // Final recalculation after server data
-    _calculateTotalIncome();
   }
 
   Future<void> _refreshData() async {
@@ -1966,6 +1959,7 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: 12),
           GestureDetector(
             onTap: () {
+              print("DROPDOWN TAPPED: User tapped on deposit history dropdown");
               // Instead of just toggling a boolean, show a dialog when clicked
               if (!_isLoadingDeposits) {
                 _showDepositHistoryDialog(context);
@@ -2006,6 +2000,7 @@ class _HomeScreenState extends State<HomeScreen>
 
 // Create a new method to show deposit history in a dialog
   void _showDepositHistoryDialog(BuildContext context) {
+    print("DIALOG OPENED: About to show deposit history dialog");
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -2068,6 +2063,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+// Content for the deposit history dialog
 // Content for the deposit history dialog
   Widget _buildDepositHistoryContent() {
     if (_userDeposits.isEmpty) {
@@ -2138,6 +2134,26 @@ class _HomeScreenState extends State<HomeScreen>
               itemCount: _userDeposits.length,
               itemBuilder: (context, index) {
                 final deposit = _userDeposits[index];
+                // Force debug print here
+                print(
+                    'Displaying deposit: ID=${deposit.id}, Purpose=${deposit.purpose}, Amount=${deposit.amount}');
+
+                // Determine display text and color based on purpose
+                String displayType;
+                Color typeColor;
+
+                if (deposit.purpose == 'investment') {
+                  displayType = 'Investment';
+                  typeColor = Colors.green.withOpacity(0.3);
+                } else if (deposit.purpose == 'buy_coin') {
+                  displayType = 'Coin Purchase';
+                  typeColor = Colors.blue.withOpacity(0.3);
+                } else {
+                  // Fallback for any other value
+                  displayType = deposit.purpose ?? 'Unknown';
+                  typeColor = Colors.orange.withOpacity(0.3);
+                }
+
                 return Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -2177,17 +2193,15 @@ class _HomeScreenState extends State<HomeScreen>
                         flex: 2,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: deposit.purpose == 'investment'
-                                ? Colors.green.withOpacity(0.3)
-                                : Colors.blue.withOpacity(0.3),
+                            color: typeColor,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            deposit.purpose == 'investment'
-                                ? 'Investment'
-                                : 'Coin',
+                            displayType,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 12,

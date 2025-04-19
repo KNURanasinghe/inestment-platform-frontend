@@ -49,6 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       } else {
+        print('Login failed: ${result['message']}');
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result['message'] ?? 'Login failed')),
