@@ -57,8 +57,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primaryColor: const Color(0xFF2F0D68), // Sets primary color
       ),
-      //initialRoute: isLoggedIn ? '/login' : '/signup', // Set the initial screen
-      home: HomeScreen(),
+      initialRoute: isLoggedIn ? '/login' : '/signup', // Set the initial screen
+      // home: HomeScreen(),
 
       routes: {
         '/login': (context) => const LoginScreen(),

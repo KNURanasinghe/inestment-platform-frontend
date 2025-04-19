@@ -179,7 +179,8 @@ class CoinService {
         final Map<String, dynamic> data = json.decode(response.body);
 
         final CoinBalance coinBalance = CoinBalance.fromJson(data);
-
+        print('coin balance ${coinBalance.balance}');
+        print('user id ${coinBalance.userId}');
         return {
           'success': true,
           'balance': coinBalance.balance,

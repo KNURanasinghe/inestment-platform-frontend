@@ -275,7 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-// Add this method to claim today's profit
+// Modify the _claimTodayProfit method to update all relevant values
   Future<void> _claimTodayProfit() async {
     if (_isClaimingProfit) return; // Prevent double-clicking
 
@@ -287,22 +287,31 @@ class _HomeScreenState extends State<HomeScreen> {
       final response = await _investmentService.claimTodayProfits(_userId);
 
       if (response['success']) {
+        final claimedAmount = response['totalProfit'] ?? 0.0;
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                'Successfully claimed ${response['totalProfit'].toStringAsFixed(2)} LKR'),
+                'Successfully claimed ${claimedAmount.toStringAsFixed(2)} LKR'),
             backgroundColor: Colors.green,
           ),
         );
 
-        // Refresh data
-        await _loadTodayProfit();
-        await _loadUserCoins();
-
+        // Update investment profit and total income, but not coin balance
         setState(() {
+          _investmentProfit +=
+              claimedAmount; // Add claimed amount to investment profit
+          _totalIncome =
+              _investmentProfit + _referralIncome; // Recalculate total income
           _hasTodayProfit = false;
+          _todayProfitAmount = 0.0;
         });
+
+        // Important: DO NOT call _loadUserCoins() here as it would refresh the coin balance
+        // Only refresh the investment profits data
+        await _loadTodayProfit();
+        await _loadInvestmentProfits();
       } else {
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
@@ -598,11 +607,32 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // Modify the _calculateTotalIncome to make it more robust
   void _calculateTotalIncome() {
     setState(() {
       _totalIncome = _investmentProfit + _referralIncome;
     });
-    print('Total income calculated: $_totalIncome');
+    print('Total income recalculated: $_totalIncome');
+  }
+
+// Optional: Add this helper method to ensure all values are in sync
+  Future<void> _refreshAfterClaim(double claimedAmount) async {
+    // First update local values for immediate UI feedback
+    setState(() {
+      _investmentProfit += claimedAmount;
+      _totalIncome = _investmentProfit + _referralIncome;
+      _hasTodayProfit = false;
+    });
+
+    // Then refresh from server to ensure everything is in sync
+    await Future.wait([
+      _loadTodayProfit(),
+      _loadUserCoins(),
+      _loadInvestmentProfits(),
+    ]);
+
+    // Final recalculation after server data
+    _calculateTotalIncome();
   }
 
   Future<void> _refreshData() async {
@@ -768,7 +798,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        _isLoadingUserCoins
+        _isLoadingUserCoins || _isLoadingCoinValue
             ? Text(
                 'Loading value...',
                 style: TextStyle(
@@ -777,7 +807,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               )
             : Text(
-                'Value: LKR ${_userCoinValueLKR.toStringAsFixed(2)}',
+                'Value: LKR ${(_userCoinCount * _coinValue).toStringAsFixed(2)}',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.8),
                   fontSize: 16,
@@ -788,124 +818,124 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Investment summary widget to show coin deposits and investment deposits
-  Widget _investmentSummaryWidget() {
-    if (_investmentSummary == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.blueGrey.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Center(
-            child: Text(
-              'Investment summary not available',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ),
-      );
-    }
+  // Widget _investmentSummaryWidget() {
+  //   if (_investmentSummary == null) {
+  //     return Padding(
+  //       padding: const EdgeInsets.symmetric(horizontal: 20.0),
+  //       child: Container(
+  //         width: double.infinity,
+  //         padding: const EdgeInsets.all(16),
+  //         decoration: BoxDecoration(
+  //           color: Colors.blueGrey.withOpacity(0.2),
+  //           borderRadius: BorderRadius.circular(10),
+  //         ),
+  //         child: const Center(
+  //           child: Text(
+  //             'Investment summary not available',
+  //             style: TextStyle(color: Colors.white),
+  //           ),
+  //         ),
+  //       ),
+  //     );
+  //   }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.indigo.withOpacity(0.7),
-              Colors.purple.withOpacity(0.5),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Investment Summary',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  'Total: LKR${_investmentSummary!.totalDeposits.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-            const Divider(color: Colors.white30),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Investment Deposits:',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-                Text(
-                  'LKR${_investmentSummary!.investmentsTotal.toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Coin Deposits:',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-                Text(
-                  'LKR${_investmentSummary!.coinPurchasesTotal.toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            if (_investmentSummary!.pendingDepositsCount > 0) ...[
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Pending Deposits:',
-                    style: TextStyle(color: Colors.amber, fontSize: 14),
-                  ),
-                  Text(
-                    '${_investmentSummary!.pendingDepositsCount} pending',
-                    style: const TextStyle(color: Colors.amber, fontSize: 14),
-                  ),
-                ],
-              ),
-            ]
-          ],
-        ),
-      ),
-    );
-  }
+  //   return Padding(
+  //     padding: const EdgeInsets.symmetric(horizontal: 20.0),
+  //     child: Container(
+  //       width: double.infinity,
+  //       padding: const EdgeInsets.all(16),
+  //       decoration: BoxDecoration(
+  //         gradient: LinearGradient(
+  //           colors: [
+  //             Colors.indigo.withOpacity(0.7),
+  //             Colors.purple.withOpacity(0.5),
+  //           ],
+  //           begin: Alignment.topLeft,
+  //           end: Alignment.bottomRight,
+  //         ),
+  //         borderRadius: BorderRadius.circular(10),
+  //         boxShadow: [
+  //           BoxShadow(
+  //             color: Colors.black.withOpacity(0.1),
+  //             blurRadius: 4,
+  //             offset: const Offset(0, 2),
+  //           ),
+  //         ],
+  //       ),
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           Row(
+  //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //             children: [
+  //               const Text(
+  //                 'Investment Summary',
+  //                 style: TextStyle(
+  //                   color: Colors.white,
+  //                   fontWeight: FontWeight.bold,
+  //                   fontSize: 16,
+  //                 ),
+  //               ),
+  //               Text(
+  //                 'Total: LKR${_investmentSummary!.totalDeposits.toStringAsFixed(2)}',
+  //                 style: const TextStyle(
+  //                   color: Colors.white,
+  //                   fontWeight: FontWeight.bold,
+  //                   fontSize: 16,
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //           const Divider(color: Colors.white30),
+  //           Row(
+  //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //             children: [
+  //               const Text(
+  //                 'Investment Deposits:',
+  //                 style: TextStyle(color: Colors.white, fontSize: 14),
+  //               ),
+  //               Text(
+  //                 'LKR${_investmentSummary!.investmentsTotal.toStringAsFixed(2)}',
+  //                 style: const TextStyle(color: Colors.white, fontSize: 14),
+  //               ),
+  //             ],
+  //           ),
+  //           const SizedBox(height: 4),
+  //           Row(
+  //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //             children: [
+  //               const Text(
+  //                 'Coin Deposits:',
+  //                 style: TextStyle(color: Colors.white, fontSize: 14),
+  //               ),
+  //               Text(
+  //                 'LKR${_investmentSummary!.coinPurchasesTotal.toStringAsFixed(2)}',
+  //                 style: const TextStyle(color: Colors.white, fontSize: 14),
+  //               ),
+  //             ],
+  //           ),
+  //           const SizedBox(height: 4),
+  //           if (_investmentSummary!.pendingDepositsCount > 0) ...[
+  //             const SizedBox(height: 8),
+  //             Row(
+  //               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //               children: [
+  //                 const Text(
+  //                   'Pending Deposits:',
+  //                   style: TextStyle(color: Colors.amber, fontSize: 14),
+  //                 ),
+  //                 Text(
+  //                   '${_investmentSummary!.pendingDepositsCount} pending',
+  //                   style: const TextStyle(color: Colors.amber, fontSize: 14),
+  //                 ),
+  //               ],
+  //             ),
+  //           ]
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {

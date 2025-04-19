@@ -159,14 +159,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
         _showCustomSnackBar(
             context, result['message'] ?? 'Registration successful!', true);
 
-        final isPayed = await _apiService.getPaymentStatus(result['userId']);
-
         // Add a small delay to allow the user to see the success message
         Future.delayed(const Duration(milliseconds: 1500), () {
           // User has already paid, navigate to home page
           Navigator.pushReplacementNamed(context, '/home');
-          Navigator.push(context,
-              MaterialPageRoute(builder: (context) => const WelcomeScreen()));
         });
       } else {
         // Registration failed
