@@ -48,11 +48,11 @@ class _PinEntryPageState extends State<PinEntryPage> {
 
   // Services
   final WithdrawalService _withdrawalService = WithdrawalService(
-    baseUrl: 'http://145.223.21.62:5021',
+    baseUrl: 'http://151.106.125.212:5021',
   );
 
   final UserApiService _userService = UserApiService(
-    baseUrl: 'http://145.223.21.62:5021',
+    baseUrl: 'http://151.106.125.212:5021',
   );
 
   @override

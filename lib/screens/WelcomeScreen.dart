@@ -38,7 +38,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   Future<void> _initializeService() async {
     _userApiService = UserApiService(
         baseUrl:
-            'http://145.223.21.62:5021'); // Replace with your actual base URL
+            'http://151.106.125.212:5021'); // Replace with your actual base URL
   }
 
   Future<void> _loadUserId() async {

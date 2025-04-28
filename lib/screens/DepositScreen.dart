@@ -17,12 +17,12 @@ class DepositScreen extends StatefulWidget {
 class _DepositScreenState extends State<DepositScreen> {
   final DepositService _depositService = DepositService(
     // Update this URL based on your server location
-    baseUrl: 'http://145.223.21.62:5021', // For Android emulator
+    baseUrl: 'http://151.106.125.212:5021', // For Android emulator
     // Use 'http://localhost:3000' for iOS simulator
   );
 
   final UserApiService _userApiService = UserApiService(
-    baseUrl: 'http://145.223.21.62:5021',
+    baseUrl: 'http://151.106.125.212:5021',
   );
 
   List<Deposit>? _pendingDeposits;

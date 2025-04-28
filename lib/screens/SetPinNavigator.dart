@@ -16,7 +16,7 @@ class SetPinNavigator extends StatefulWidget {
 
 class _SetPinNavigatorState extends State<SetPinNavigator> {
   final UserApiService _userService =
-      UserApiService(baseUrl: 'http://145.223.21.62:5021');
+      UserApiService(baseUrl: 'http://151.106.125.212:5021');
   bool isPinSet = false;
   bool isLoading = true;
 

@@ -23,11 +23,11 @@ class PaymentDetailsScreen extends StatefulWidget {
 class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
   final DepositService _depositService = DepositService(
     // Update with your API base URL
-    baseUrl: 'http://145.223.21.62:5021',
+    baseUrl: 'http://151.106.125.212:5021',
   );
 
   final UserApiService _userApiService = UserApiService(
-    baseUrl: 'http://145.223.21.62:5021',
+    baseUrl: 'http://151.106.125.212:5021',
   );
 
   File? _selectedImage;

@@ -36,7 +36,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   // Create instance of API service
   final UserApiService _apiService = UserApiService(
-    baseUrl: 'http://145.223.21.62:5021', // Your backend URL
+    baseUrl: 'http://151.106.125.212:5021', // Your backend URL
   );
 
   // Custom SnackBar method
