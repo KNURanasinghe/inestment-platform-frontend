@@ -23,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final UserApiService _apiService = UserApiService(
     baseUrl:
-        'http://145.223.21.62:5021', // Replace with your actual backend URL
+        'http://151.106.125.212:5021', // Replace with your actual backend URL
   );
 
   Future<void> _login() async {

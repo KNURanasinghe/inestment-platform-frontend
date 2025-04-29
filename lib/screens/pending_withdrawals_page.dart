@@ -16,7 +16,7 @@ class PendingWithdrawalsPage extends StatefulWidget {
 
 class _PendingWithdrawalsPageState extends State<PendingWithdrawalsPage> {
   final WithdrawalService _withdrawalService = WithdrawalService(
-    baseUrl: 'http://145.223.21.62:5021', // Update with your server URL
+    baseUrl: 'http://151.106.125.212:5021', // Update with your server URL
   );
 
   List<Withdrawal>? _pendingWithdrawals;

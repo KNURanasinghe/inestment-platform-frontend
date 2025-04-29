@@ -61,7 +61,8 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     print('Fetching transaction history for user ID: $_userId');
     try {
       final response = await http.get(
-        Uri.parse('http://145.223.21.62:5021/api/users/$_userId/transactions'),
+        Uri.parse(
+            'http://151.106.125.212:5021/api/users/$_userId/transactions'),
         headers: {'Content-Type': 'application/json'},
       ).timeout(
         const Duration(seconds: 15),

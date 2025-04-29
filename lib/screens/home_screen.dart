@@ -81,19 +81,19 @@ class _HomeScreenState extends State<HomeScreen>
 
   // Services
   final UserApiService _userApiService = UserApiService(
-    baseUrl: 'http://145.223.21.62:5021',
+    baseUrl: 'http://151.106.125.212:5021',
   );
 
   final CoinService _coinService = CoinService(
-    baseUrl: 'http://145.223.21.62:5021',
+    baseUrl: 'http://151.106.125.212:5021',
   );
 
   final InvestmentService _investmentService = InvestmentService(
-    baseUrl: 'http://145.223.21.62:5021',
+    baseUrl: 'http://151.106.125.212:5021',
   );
 
   final ReferralService _referralService = ReferralService(
-    baseUrl: 'http://145.223.21.62:5021',
+    baseUrl: 'http://151.106.125.212:5021',
   );
 
   // Slidable container text contents (reduced to 1)
@@ -238,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       // Create deposit service
       final depositService =
-          DepositService(baseUrl: 'http://145.223.21.62:5021');
+          DepositService(baseUrl: 'http://151.106.125.212:5021');
 
       // Get all user deposits that are not pending
       final deposits = await depositService.getUserDeposits(_userId);

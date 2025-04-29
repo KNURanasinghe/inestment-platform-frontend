@@ -7,7 +7,7 @@ import 'package:http_parser/http_parser.dart';
 
 class KycService {
   // Your existing code and API base URL
-  final String baseUrl = 'http://145.223.21.62:5021/api';
+  final String baseUrl = 'http://151.106.125.212:5021/api';
 
   // Submit KYC verification
   Future<Map<String, dynamic>> submitKYCVerification(int userId,
