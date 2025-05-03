@@ -78,7 +78,15 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
         final responseData = json.decode(response.body);
 
         setState(() {
-          _balance = double.parse(responseData['balance'] ?? '0.0');
+          // Parse the balance from response
+          final balanceWithCharge =
+              double.parse(responseData['balance'] ?? '0.0');
+
+// Calculate original amount by removing 10% charge
+          final originalAmount = balanceWithCharge / 1.1;
+
+// Now you can use originalAmount for display purposes
+          _balance = originalAmount;
           _groupedTransactions = {
             'today':
                 List<dynamic>.from(responseData['transactions']['today'] ?? []),
@@ -313,8 +321,13 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
           _buildTransactionSection(
             "Today",
             _getFilteredTransactions(_groupedTransactions['today'] ?? [])
-                .map((tx) => _buildTransactionItem(tx['description'],
-                    tx['time'], tx['display_amount'], tx['type'] == 'income'))
+                .map((tx) => _buildTransactionItem(
+                      tx['description'],
+                      getFormattedTime(tx['time']), // Format time
+                      _getDisplayAmountWithoutCharge(
+                          tx['display_amount']), // Remove 10%
+                      tx['type'] == 'income',
+                    ))
                 .toList(),
           ),
           const SizedBox(height: 20),
@@ -323,8 +336,13 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
           _buildTransactionSection(
             "Yesterday",
             _getFilteredTransactions(_groupedTransactions['yesterday'] ?? [])
-                .map((tx) => _buildTransactionItem(tx['description'],
-                    tx['time'], tx['display_amount'], tx['type'] == 'income'))
+                .map((tx) => _buildTransactionItem(
+                      tx['description'],
+                      getFormattedTime(tx['time']), // Format time
+                      _getDisplayAmountWithoutCharge(
+                          tx['display_amount']), // Remove 10%
+                      tx['type'] == 'income',
+                    ))
                 .toList(),
           ),
           const SizedBox(height: 20),
@@ -333,13 +351,60 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
           _buildTransactionSection(
             "Older",
             _getFilteredTransactions(_groupedTransactions['older'] ?? [])
-                .map((tx) => _buildTransactionItem(tx['description'],
-                    tx['time'], tx['display_amount'], tx['type'] == 'income'))
+                .map((tx) => _buildTransactionItem(
+                      tx['description'],
+                      getFormattedTime(tx['time']), // Format time
+                      _getDisplayAmountWithoutCharge(
+                          tx['display_amount']), // Remove 10%
+                      tx['type'] == 'income',
+                    ))
                 .toList(),
           ),
         ],
       ],
     );
+  }
+
+  String getFormattedTime(String timeString) {
+    if (timeString.isEmpty) {
+      return "Unknown time";
+    }
+
+    try {
+      // Parse the time string (assuming format "7:09 AM")
+      final timeFormat = DateFormat('h:mm a');
+      final timeOnly = timeFormat.parse(timeString);
+
+      // Get current date in local timezone
+      final now = DateTime.now();
+
+      // Combine with current date and add Sri Lanka offset
+      final sriLankanTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        timeOnly.hour,
+        timeOnly.minute,
+      ).add(const Duration(hours: 5, minutes: 30));
+
+      // Format for display
+      return DateFormat('h:mm a').format(sriLankanTime);
+    } catch (e) {
+      print('Error parsing time string "$timeString": $e');
+      return timeString; // Return original if parsing fails
+    }
+  }
+
+// Helper function to remove 10% charge from amount
+  String _getDisplayAmountWithoutCharge(String amountWithCharge) {
+    try {
+      final amount = double.parse(amountWithCharge);
+      final amountWithoutCharge = amount / 1.1;
+      return amountWithoutCharge
+          .toStringAsFixed(2); // Format to 2 decimal places
+    } catch (e) {
+      return amountWithCharge; // Return original if parsing fails
+    }
   }
 
   Widget _buildTransactionSection(String title, List<Widget> transactions) {

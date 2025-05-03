@@ -367,8 +367,8 @@ class _HomeScreenState extends State<HomeScreen>
 
         // Important: DO NOT call _loadUserCoins() here as it would refresh the coin balance
         // Only refresh the investment profits data
-        await _loadTodayProfit();
-        await _loadInvestmentProfits();
+        // await _loadTodayProfit();
+        // await _loadInvestmentProfits();
       } else {
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
@@ -787,7 +787,7 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       child: Center(
         child: Text(
-          'Current Coin Rate 1 Coin = LKR${_coinValue.toStringAsFixed(2)}',
+          'Current Coin Rate 1 Coin = LKR$_coinValue',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -799,6 +799,8 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   _userCoinInfoWidget() {
+    print(
+        'Value: LKR  $_userCoinCount * $_coinValue ${(_userCoinCount * _coinValue).toStringAsFixed(2)}');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -825,7 +827,7 @@ class _HomeScreenState extends State<HomeScreen>
                       strokeWidth: 2,
                     ))
                 : Text(
-                    '${_userCoinCount.toStringAsFixed(2)} Coins',
+                    '${_userCoinCount.toInt()} Coins',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -844,7 +846,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               )
             : Text(
-                'Value: LKR ${(_userCoinCount * _coinValue).toStringAsFixed(2)}',
+                'Value: LKR ${(_userCoinCount * _coinValue).toInt()}',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.8),
                   fontSize: 16,
@@ -1401,7 +1403,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               width, _coinValueError)
                                           : _infoWidget2(
                                               'Current Balance',
-                                              'LKR ${_investmentProfit + _referralIncome}',
+                                              'LKR ${(_investmentProfit + _referralIncome).toStringAsFixed(2)}',
                                               width),
                                 ),
                               ),
@@ -1786,20 +1788,6 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                "Investment: LKR${referral.totalInvestment?.toStringAsFixed(2) ?? '0.00'}",
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                "Coins: LKR${referral.totalCoinPurchase?.toStringAsFixed(2) ?? '0.00'}",
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
-            ],
           ),
         ],
       ),

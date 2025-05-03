@@ -295,7 +295,7 @@ class _AccountPageState extends State<AccountPage> {
                 children: [
                   Text(
                     widget.username ?? "Alexander Mitchell",
-                    style: TextStyle(fontSize: 18, color: Colors.white),
+                    style: const TextStyle(fontSize: 18, color: Colors.white),
                   ),
                   if (isKycVerified)
                     Padding(
@@ -559,8 +559,7 @@ class _AccountPageState extends State<AccountPage> {
                     const SizedBox(width: 8),
                     GestureDetector(
                       onTap: () {
-                        Clipboard.setData(
-                            const ClipboardData(text: "TLS 8472910"));
+                        Clipboard.setData(ClipboardData(text: refcode));
                         _showCustomSnackBar(context,
                             "Referral code copied to clipboard!", true);
                       },
