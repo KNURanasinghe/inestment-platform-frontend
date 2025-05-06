@@ -289,7 +289,8 @@ class _DepositScreenState extends State<DepositScreen> {
                             Text('Total Pending',
                                 style: AppTheme.textStyleBold),
                             const SizedBox(height: 8),
-                            Text('\$${_totalPendingAmount.toStringAsFixed(2)}',
+                            Text(
+                                '\$${(_totalPendingAmount / 1.1).toStringAsFixed(2)}',
                                 style: AppTheme.textStyleLarge),
                           ],
                         ),
@@ -588,7 +589,7 @@ class _DepositScreenState extends State<DepositScreen> {
                                                             .start,
                                                     children: [
                                                       Text(
-                                                          '\$${deposit.amount.toStringAsFixed(2)}',
+                                                          '\$${(deposit.amount / 1.1).toStringAsFixed(2)}',
                                                           style: AppTheme
                                                               .textStyleBold),
                                                       Text(

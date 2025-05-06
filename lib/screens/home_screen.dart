@@ -369,6 +369,21 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _claimTodayProfit() async {
     if (_isClaimingProfit) return; // Prevent double-clicking
 
+    double maxIncomeLimit = _totalDepositAmount * 3;
+    if (_totalIncome >= maxIncomeLimit) {
+      // Show message explaining why claim is disabled
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Cannot claim profits: Maximum income limit reached (3x investment amount). Please make additional deposits to increase your earning potential.',
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+      return; // Exit without claiming
+    }
+
     setState(() {
       _isClaimingProfit = true;
     });
@@ -427,8 +442,121 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  // Add this as a new method in the _HomeScreenState class
+
+  Widget _buildIncomeLimitMessage() {
+    // Compare total income with investment wallet amount
+    double maxIncomeLimit = _totalDepositAmount * 3;
+    bool hasReachedMaxLimit = _totalIncome >= maxIncomeLimit;
+
+    // Calculate remaining earnings allowed
+    double remainingEarnings = maxIncomeLimit - _totalIncome;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: hasReachedMaxLimit
+                ? [
+                    Colors.red.withOpacity(0.7),
+                    Colors.redAccent.withOpacity(0.5)
+                  ]
+                : [
+                    Colors.green.withOpacity(0.7),
+                    Colors.lightGreen.withOpacity(0.5)
+                  ],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  hasReachedMaxLimit ? Icons.warning_amber : Icons.info_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  hasReachedMaxLimit
+                      ? 'Maximum Income Limit Reached'
+                      : 'Income Limit',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              hasReachedMaxLimit
+                  ? 'You have reached the maximum income limit of 3x your investment amount. Please make additional deposits to increase your earning potential.'
+                  : 'You can earn up to LKR ${remainingEarnings.toStringAsFixed(2)} more before reaching your maximum income limit of 3x your investment amount.',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 6),
+            LinearProgressIndicator(
+              value: _totalIncome / maxIncomeLimit,
+              backgroundColor: Colors.white.withOpacity(0.3),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                hasReachedMaxLimit ? Colors.red[300]! : Colors.white,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'LKR 0',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 10,
+                  ),
+                ),
+                Text(
+                  'LKR ${maxIncomeLimit.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 // Create a widget for today's profit container
+  // Modified _buildTodayProfitContainer method to disable claim button when limit reached
   Widget _buildTodayProfitContainer() {
+    // Check if user has reached maximum income limit
+    bool hasReachedMaxLimit = false;
+    if (!_isLoadingDeposits && _totalDepositAmount > 0) {
+      double maxIncomeLimit = _totalDepositAmount * 3;
+      hasReachedMaxLimit = _totalIncome >= maxIncomeLimit;
+    }
+
     if (_isLoadingTodayProfit) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -479,10 +607,15 @@ class _HomeScreenState extends State<HomeScreen>
         padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Colors.green.withOpacity(0.8),
-              Colors.green.withOpacity(0.6),
-            ],
+            colors: hasReachedMaxLimit
+                ? [
+                    Colors.grey.withOpacity(0.7),
+                    Colors.grey.withOpacity(0.5),
+                  ]
+                : [
+                    Colors.green.withOpacity(0.8),
+                    Colors.green.withOpacity(0.6),
+                  ],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
@@ -504,17 +637,21 @@ class _HomeScreenState extends State<HomeScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.monetization_on,
+                      Icon(
+                        hasReachedMaxLimit
+                            ? Icons.warning_amber
+                            : Icons.monetization_on,
                         color: Colors.white,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
                       Flexible(
-                        child: const Text(
-                          'Today\'s Profit Available!',
+                        child: Text(
+                          hasReachedMaxLimit
+                              ? 'Profit Available (Max Limit Reached)'
+                              : 'Today\'s Profit Available!',
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
@@ -539,11 +676,16 @@ class _HomeScreenState extends State<HomeScreen>
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isClaimingProfit ? null : _claimTodayProfit,
+                onPressed: hasReachedMaxLimit
+                    ? null // Disable the button if max limit reached
+                    : (_isClaimingProfit ? null : _claimTodayProfit),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  backgroundColor:
+                      hasReachedMaxLimit ? Colors.grey : Colors.red,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.red.withOpacity(0.5),
+                  disabledBackgroundColor: hasReachedMaxLimit
+                      ? Colors.grey.withOpacity(0.5)
+                      : Colors.red.withOpacity(0.5),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   textStyle: const TextStyle(
                     fontSize: 16,
@@ -559,9 +701,24 @@ class _HomeScreenState extends State<HomeScreen>
                           strokeWidth: 2,
                         ),
                       )
-                    : Text('CLAIM NOW'),
+                    : Text(
+                        hasReachedMaxLimit ? 'MAX LIMIT REACHED' : 'CLAIM NOW',
+                      ),
               ),
             ),
+            if (hasReachedMaxLimit)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  'Make additional deposits to increase your earning limit',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
           ],
         ),
       ),
@@ -1408,6 +1565,14 @@ class _HomeScreenState extends State<HomeScreen>
                                 ],
                               ),
                             ),
+                            const SizedBox(height: 16),
+
+// Income limit message
+                            _isLoadingDeposits || _totalDepositAmount <= 0
+                                ? SizedBox
+                                    .shrink() // Don't show if still loading or no deposits
+                                : _buildIncomeLimitMessage(),
+
                             const SizedBox(height: 20),
 
                             // Golden tape upcoming store container
