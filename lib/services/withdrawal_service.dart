@@ -312,4 +312,49 @@ class WithdrawalService {
       throw Exception('Error deleting withdrawal: $e');
     }
   }
+
+  // Get total amount of withdrawals for a user
+  Future<double> getUserTotalWithdrawals(int userId, {String? status}) async {
+    try {
+      // Build the URL with optional status query parameter
+      String url = '$baseUrl/api/users/$userId/withdrawals/total';
+      if (status != null) {
+        url += '?status=$status';
+      }
+      print('Fetching user total withdrawals from $url');
+
+      final response = await http.get(
+        Uri.parse(url),
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return _parseAmount(data['totalUserWithdrawalAmount']);
+      } else {
+        throw Exception(
+            'Failed to load total user withdrawal amount: ${response.body}');
+      }
+    } catch (e) {
+      print('Error getting total user withdrawal amount: $e');
+      throw Exception('Error getting total user withdrawal amount: $e');
+    }
+  }
+
+// Helper method to parse amount that could be dynamic
+  static double _parseAmount(dynamic amount) {
+    if (amount == null) return 0.0;
+    if (amount is double) return amount;
+    if (amount is int) return amount.toDouble();
+    if (amount is String) {
+      try {
+        return double.parse(amount);
+      } catch (e) {
+        return 0.0;
+      }
+    }
+    return 0.0;
+  }
 }

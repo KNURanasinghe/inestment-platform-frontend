@@ -3,6 +3,8 @@ import 'package:investment_plan_app/screens/PaymentDetailsScreen.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
 import 'package:investment_plan_app/screens/BankDetailsScreen.dart';
 
+import '../services/coin_service.dart';
+
 class DepositFundScreen extends StatefulWidget {
   final String? depositType;
   const DepositFundScreen({super.key, this.depositType});
@@ -20,11 +22,18 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
   // Min-max amount constraints based on deposit type
   late double _minAmount;
   late double _maxAmount;
+  double _coinValue = 0.0;
+  bool _isLoadingCoinValue = true;
+  double coinBalance = 0;
+
+  final CoinService _coinService = CoinService(
+    baseUrl: 'http://151.106.125.212:5021',
+  );
 
   @override
   void initState() {
     super.initState();
-
+    _getCoinValue();
     // Set amount constraints based on deposit type
     if (widget.depositType == 'investment') {
       _minAmount = 10000;
@@ -36,7 +45,22 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
     }
   }
 
-  void _calculateFees() {
+  Future<void> _getCoinValue() async {
+    final response = await _coinService.getCurrentCoinValue();
+    if (response['success']) {
+      setState(() {
+        _coinValue = response['coinValue'].lkrValue;
+        _isLoadingCoinValue = false;
+      });
+      print('Coin value loaded: $_coinValue');
+    } else {
+      setState(() {
+        _isLoadingCoinValue = true;
+      });
+    }
+  }
+
+  void _calculateFees() async {
     // Clear previous error
     setState(() {
       _errorMessage = null;
@@ -63,6 +87,7 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
     setState(() {
       serviceFee = amount * 0.1;
       totalAmount = amount + serviceFee;
+      coinBalance = amount / _coinValue;
     });
   }
 
@@ -266,6 +291,20 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
                             onChanged: (value) => _calculateFees(),
                           ),
                         ),
+                        if (_amountController.text.isNotEmpty &&
+                            widget.depositType != 'investment') ...[
+                          const SizedBox(height: 8),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              '${coinBalance.toStringAsFixed(2)} coins available',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                         if (_errorMessage != null) ...[
                           const SizedBox(height: 8),
                           Padding(

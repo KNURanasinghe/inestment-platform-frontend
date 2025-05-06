@@ -10,6 +10,7 @@ import 'package:investment_plan_app/services/investment_service.dart';
 import 'package:investment_plan_app/services/referral_service.dart';
 
 import '../services/deposit_service.dart';
+import '../services/withdrawal_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -78,6 +79,8 @@ class _HomeScreenState extends State<HomeScreen>
   bool _isLoadingDeposits = true;
   List<Deposit> _userDeposits = [];
   final bool _isDropdownOpen = false;
+
+  double withdrawalAmount = 0.0;
 
   // Services
   final UserApiService _userApiService = UserApiService(
@@ -148,6 +151,35 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+// Example usage in a Flutter widget
+  Future<void> _fetchUserTotalWithdrawals() async {
+    try {
+      final withdrawalService =
+          WithdrawalService(baseUrl: 'http://151.106.125.212:5021');
+      final userId = await UserApiService.getUserId();
+
+      // Get all withdrawals total
+      final totalAmount =
+          await withdrawalService.getUserTotalWithdrawals(userId!);
+      print('Total withdrawals: $totalAmount');
+      setState(() {
+        withdrawalAmount = totalAmount;
+      });
+      // Get only pending withdrawals total
+      final pendingAmount = await withdrawalService
+          .getUserTotalWithdrawals(userId, status: 'pending');
+      print('Pending withdrawals: $pendingAmount');
+
+      // Get only approved withdrawals total
+      final approvedAmount = await withdrawalService
+          .getUserTotalWithdrawals(userId, status: 'approved');
+      print('Approved withdrawals: $approvedAmount');
+    } catch (e) {
+      print('Error: $e');
+      // Handle error, show snackbar, etc.
+    }
+  }
+
   // Start auto-scrolling
   void _startAutoScrolling() {
     // Cancel any existing timer to prevent duplicates
@@ -208,6 +240,7 @@ class _HomeScreenState extends State<HomeScreen>
       // Serial loading for dependent operations
       await _loadTodayProfit();
       await _loadUserDeposits();
+      await _fetchUserTotalWithdrawals();
 
       _calculateTotalIncome();
 
@@ -764,7 +797,7 @@ class _HomeScreenState extends State<HomeScreen>
   // Define the reusable container widget for auto-scrolling
   Widget _buildAutoScrollContainer(int index) {
     return Container(
-      width: 150, // Fixed width for each container
+      width: 180, // Fixed width for each container
       margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
       padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
@@ -787,7 +820,7 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       child: Center(
         child: Text(
-          'Current Coin Rate 1 Coin = LKR$_coinValue',
+          'Coin Rate 1 Coin = LKR ${_coinValue.toStringAsFixed(2)}',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -846,7 +879,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               )
             : Text(
-                'Value: LKR ${(_userCoinCount * _coinValue).toInt()}',
+                'Value: LKR ${(_userCoinCount * _coinValue).toStringAsFixed(2)}',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.8),
                   fontSize: 16,
@@ -986,19 +1019,8 @@ class _HomeScreenState extends State<HomeScreen>
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : Text('Hello $username',
-                    style: const TextStyle(fontSize: 20, color: Colors.white)),
             GestureDetector(
               onTap: () {
                 // Navigate to profile screen
@@ -1012,6 +1034,20 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
             ),
+            SizedBox(
+              width: 10,
+            ),
+            _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : Text('Hello $username',
+                    style: const TextStyle(fontSize: 20, color: Colors.white)),
           ],
         ),
         backgroundColor: AppTheme.backgroundColor,
@@ -1403,7 +1439,7 @@ class _HomeScreenState extends State<HomeScreen>
                                               width, _coinValueError)
                                           : _infoWidget2(
                                               'Current Balance',
-                                              'LKR ${(_investmentProfit + _referralIncome).toStringAsFixed(2)}',
+                                              'LKR ${(_investmentProfit + _referralIncome - withdrawalAmount).toStringAsFixed(2)}',
                                               width),
                                 ),
                               ),
@@ -1789,6 +1825,20 @@ class _HomeScreenState extends State<HomeScreen>
               ],
             ),
           ),
+          // Column(
+          //   crossAxisAlignment: CrossAxisAlignment.end,
+          //   children: [
+          //     Text(
+          //       "Investment: LKR${referral.totalInvestment?.toStringAsFixed(2) ?? '0.00'}",
+          //       style: const TextStyle(color: Colors.white, fontSize: 12),
+          //     ),
+          //     const SizedBox(height: 4),
+          //     Text(
+          //       "Coins: LKR${referral.totalCoinPurchase?.toStringAsFixed(2) ?? '0.00'}",
+          //       style: const TextStyle(color: Colors.white, fontSize: 12),
+          //     ),
+          //   ],
+          // ),
         ],
       ),
     );
@@ -2207,7 +2257,7 @@ class _HomeScreenState extends State<HomeScreen>
 
           // Summary footer
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.2),
               borderRadius: BorderRadius.only(
@@ -2229,6 +2279,8 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     Text(
                       'LKR ${_totalInvestmentDeposits.toStringAsFixed(2)}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 14,

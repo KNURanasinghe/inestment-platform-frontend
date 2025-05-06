@@ -5,7 +5,10 @@ import 'package:investment_plan_app/services/user_service.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
 import 'package:investment_plan_app/screens/pending_withdrawals_page.dart';
 import 'package:investment_plan_app/services/withdrawal_service.dart';
+import 'package:investment_plan_app/services/investment_service.dart';
+import 'package:investment_plan_app/services/referral_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:investment_plan_app/screens/WithdrawScreen.dart';
 
 class PinEntryPage extends StatefulWidget {
   String? name;
@@ -15,8 +18,7 @@ class PinEntryPage extends StatefulWidget {
   double? amount;
   String? setPin;
   String? password;
-  final String?
-      mode; // Add a mode parameter: 'withdrawal', 'setPin', or 'changePassword'
+  final String? mode; // 'withdrawal', 'setPin', or 'changePassword'
 
   PinEntryPage({
     super.key,
@@ -39,6 +41,16 @@ class _PinEntryPageState extends State<PinEntryPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  // Add these variables for PIN confirmation
+  bool _isConfirmingPin = false;
+  String _firstEnteredPin = "";
+
+  // Add variables for total income
+  double _totalIncome = 0.0;
+  double _investmentProfit = 0.0;
+  double _referralIncome = 0.0;
+  bool _isLoadingIncome = false;
+
   // For password change
   final TextEditingController _currentPasswordController =
       TextEditingController();
@@ -55,9 +67,69 @@ class _PinEntryPageState extends State<PinEntryPage> {
     baseUrl: 'http://151.106.125.212:5021',
   );
 
+  final InvestmentService _investmentService = InvestmentService(
+    baseUrl: 'http://151.106.125.212:5021',
+  );
+
+  final ReferralService _referralService = ReferralService(
+    baseUrl: 'http://151.106.125.212:5021',
+  );
+
   @override
   void initState() {
     super.initState();
+
+    // If we're in setPin mode, load income data
+    // to pass to WithdrawPage after setting PIN
+    if (widget.mode == 'setPin') {
+      _loadIncomeData();
+    }
+  }
+
+  // Load income data to pass to WithdrawPage
+  Future<void> _loadIncomeData() async {
+    setState(() {
+      _isLoadingIncome = true;
+    });
+
+    try {
+      final userId = await UserApiService.getUserId();
+      if (userId == null) {
+        throw Exception('User ID not found');
+      }
+
+      // Load investment profits
+      final investmentResponse =
+          await _investmentService.getUserInvestments(userId);
+      if (investmentResponse['success']) {
+        final summary = investmentResponse['summary'];
+        setState(() {
+          _investmentProfit = summary.totalEarned;
+        });
+      }
+
+      // Load referral income
+      final referralResponse = await _referralService.getUserReferrals(userId);
+      if (referralResponse['success']) {
+        final commissions = referralResponse['commissions'];
+        setState(() {
+          _referralIncome = commissions.coin;
+        });
+      }
+
+      // Calculate total income
+      setState(() {
+        _totalIncome = _investmentProfit + _referralIncome;
+        _isLoadingIncome = false;
+      });
+
+      print('Total income loaded in PinEntryPage: $_totalIncome');
+    } catch (e) {
+      setState(() {
+        _isLoadingIncome = false;
+      });
+      print('Error loading income data: $e');
+    }
   }
 
   // Custom SnackBar method
@@ -182,7 +254,15 @@ class _PinEntryPageState extends State<PinEntryPage> {
         // Add a slight delay before navigation
         Future.delayed(const Duration(milliseconds: 1500), () {
           if (mounted) {
-            Navigator.pop(context); // Go back to previous screen
+            // Navigate to withdraw page with balance
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => WithdrawPage(
+                  balance: _totalIncome, // Pass the total income as balance
+                ),
+              ),
+            );
           }
         });
       } else {
@@ -383,7 +463,32 @@ class _PinEntryPageState extends State<PinEntryPage> {
     // For PIN settings, we use a 4-digit PIN
     if (widget.mode == 'setPin') {
       if (enteredPin.length == 4) {
-        await _updatePin();
+        // Check if we're confirming the PIN
+        if (_isConfirmingPin) {
+          // Validate that confirmation PIN matches the first PIN
+          if (enteredPin == _firstEnteredPin) {
+            await _updatePin(); // Save to database
+          } else {
+            setState(() {
+              _errorMessage = 'PINs do not match. Please try again.';
+              enteredPin = ""; // Clear entered PIN
+              _isConfirmingPin = false; // Start over
+              _firstEnteredPin = ""; // Reset first PIN
+            });
+
+            _showCustomSnackBar(
+                context, "PINs do not match. Please try again.", false);
+          }
+        } else {
+          // First PIN entry, store it and ask for confirmation
+          setState(() {
+            _firstEnteredPin = enteredPin;
+            enteredPin = ""; // Clear for confirmation input
+            _isConfirmingPin = true;
+          });
+
+          _showCustomSnackBar(context, "Please confirm your PIN", true);
+        }
       } else {
         setState(() {
           _errorMessage = 'Please enter a 4-digit PIN';
@@ -604,8 +709,10 @@ class _PinEntryPageState extends State<PinEntryPage> {
     String pageSubtitle = "Enter your PIN to confirm withdrawal";
 
     if (widget.mode == 'setPin') {
-      pageTitle = "Set PIN";
-      pageSubtitle = "Create a 4-digit PIN for withdrawals";
+      pageTitle = _isConfirmingPin ? "Confirm PIN" : "Set PIN";
+      pageSubtitle = _isConfirmingPin
+          ? "Re-enter your PIN to confirm"
+          : "Create a 4-digit PIN for withdrawals";
     } else if (widget.mode == 'changePassword') {
       pageTitle = "Change Password";
       pageSubtitle = "Update your login password";
@@ -668,7 +775,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
                     const SizedBox(height: 20),
                     _buildPinIndicator(),
                     const SizedBox(height: 40),
-                    if (_isLoading)
+                    if (_isLoading || _isLoadingIncome)
                       const Column(
                         children: [
                           CircularProgressIndicator(color: Colors.white),

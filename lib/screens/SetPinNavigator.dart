@@ -2,10 +2,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:investment_plan_app/screens/ProfileScreen.dart';
+import 'package:investment_plan_app/screens/pin_entry_page.dart';
 import 'package:investment_plan_app/services/user_service.dart';
+import 'package:investment_plan_app/services/investment_service.dart';
+import 'package:investment_plan_app/services/referral_service.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
 import 'package:investment_plan_app/screens/WithdrawScreen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../services/withdrawal_service.dart';
 
 class SetPinNavigator extends StatefulWidget {
   const SetPinNavigator({super.key});
@@ -17,26 +22,65 @@ class SetPinNavigator extends StatefulWidget {
 class _SetPinNavigatorState extends State<SetPinNavigator> {
   final UserApiService _userService =
       UserApiService(baseUrl: 'http://151.106.125.212:5021');
+  final InvestmentService _investmentService =
+      InvestmentService(baseUrl: 'http://151.106.125.212:5021');
+  final ReferralService _referralService =
+      ReferralService(baseUrl: 'http://151.106.125.212:5021');
+
   bool isPinSet = false;
   bool isLoading = true;
+  double _totalIncome = 0.0;
+  double _investmentProfit = 0.0;
+  double _referralIncome = 0.0;
+  double withdrawalAmount = 0.0;
+// Example usage in a Flutter widget
+  Future<void> _fetchUserTotalWithdrawals() async {
+    try {
+      final withdrawalService =
+          WithdrawalService(baseUrl: 'http://151.106.125.212:5021');
+      final userId = await UserApiService.getUserId();
+      // Get all withdrawals total
+      final totalAmount =
+          await withdrawalService.getUserTotalWithdrawals(userId!);
+      print('Total withdrawals: $totalAmount');
+      setState(() {
+        withdrawalAmount = totalAmount;
+      });
+      // Get only pending withdrawals total
+      final pendingAmount = await withdrawalService
+          .getUserTotalWithdrawals(userId, status: 'pending');
+      print('Pending withdrawals: $pendingAmount');
+
+      // Get only approved withdrawals total
+      final approvedAmount = await withdrawalService
+          .getUserTotalWithdrawals(userId, status: 'approved');
+      print('Approved withdrawals: $approvedAmount');
+
+      setState(() {});
+    } catch (e) {
+      print('Error: $e');
+      // Handle error, show snackbar, etc.
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    checkPinStatus();
+    _loadData();
   }
 
-  Future<void> checkPinStatus() async {
+  Future<void> _loadData() async {
+    setState(() {
+      isLoading = true;
+    });
+
     try {
-      final userid = await UserApiService.getUserId();
-      final userdata = await _userService.getUserProfile(userid!);
-      final data = userdata['userData'];
-      print('User data: $data');
+      await checkPinStatus();
+      await _loadIncomeData();
+      await _fetchUserTotalWithdrawals();
 
       setState(() {
-        isPinSet = data['hasPin'] ?? false;
         isLoading = false;
-        print('User has PIN: $isPinSet');
       });
 
       // If PIN is set, navigate to WithdrawPage
@@ -46,17 +90,75 @@ class _SetPinNavigatorState extends State<SetPinNavigator> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => const WithdrawPage(),
+              builder: (context) => WithdrawPage(
+                balance: _totalIncome -
+                    withdrawalAmount, // Pass the total income as balance
+              ),
             ),
           );
         });
       }
     } catch (e) {
-      print('Error checking PIN status: $e');
+      print('Error loading data: $e');
       setState(() {
         isLoading = false;
       });
       _showCustomSnackBar(context, "Failed to load user data", false);
+    }
+  }
+
+  Future<void> checkPinStatus() async {
+    try {
+      final userid = await UserApiService.getUserId();
+      if (userid == null) {
+        throw Exception('User ID not found');
+      }
+
+      final userdata = await _userService.getUserProfile(userid);
+      final data = userdata['userData'];
+      print('User data: $data');
+
+      setState(() {
+        isPinSet = data['hasPin'] ?? false;
+        print('User has PIN: $isPinSet');
+      });
+    } catch (e) {
+      print('Error checking PIN status: $e');
+      rethrow; // Re-throw to be caught by parent
+    }
+  }
+
+  Future<void> _loadIncomeData() async {
+    try {
+      final userId = await UserApiService.getUserId();
+      if (userId == null) {
+        throw Exception('User ID not found');
+      }
+
+      // Load investment profits
+      final investmentResponse =
+          await _investmentService.getUserInvestments(userId);
+      if (investmentResponse['success']) {
+        final summary = investmentResponse['summary'];
+        _investmentProfit = summary.totalEarned;
+      }
+
+      // Load referral income
+      final referralResponse = await _referralService.getUserReferrals(userId);
+      if (referralResponse['success']) {
+        final commissions = referralResponse['commissions'];
+        _referralIncome = commissions.coin;
+      }
+
+      // Calculate total income
+      setState(() {
+        _totalIncome = _investmentProfit + _referralIncome;
+      });
+
+      print('Total income calculated: $_totalIncome');
+    } catch (e) {
+      print('Error loading income data: $e');
+      rethrow; // Re-throw to be caught by parent
     }
   }
 
@@ -158,8 +260,8 @@ class _SetPinNavigatorState extends State<SetPinNavigator> {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AccountPage(
-                            username: '',
+                          builder: (context) => PinEntryPage(
+                            mode: 'setPin',
                           ),
                         ),
                       );

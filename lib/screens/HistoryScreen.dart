@@ -10,6 +10,11 @@ import 'dart:convert';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 
+import '../services/investment_service.dart';
+import '../services/referral_service.dart';
+import '../services/withdrawal_service.dart';
+import 'ProfitHistoryDialog.dart';
+
 class TransactionHistoryPage extends StatefulWidget {
   const TransactionHistoryPage({super.key});
 
@@ -30,8 +35,83 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     'older': []
   };
 
+  final InvestmentService _investmentService =
+      InvestmentService(baseUrl: 'http://151.106.125.212:5021');
+
+  final ReferralService _referralService =
+      ReferralService(baseUrl: 'http://151.106.125.212:5021');
+
   // Filter state
   String _currentFilter = 'All';
+  bool isPinSet = false;
+  bool isLoading = true;
+  double _totalIncome = 0.0;
+  double _investmentProfit = 0.0;
+  double _referralIncome = 0.0;
+  double withdrawalAmount = 0.0;
+// Example usage in a Flutter widget
+  Future<void> _fetchUserTotalWithdrawals() async {
+    try {
+      final withdrawalService =
+          WithdrawalService(baseUrl: 'http://151.106.125.212:5021');
+      final userId = await UserApiService.getUserId();
+      // Get all withdrawals total
+      final totalAmount =
+          await withdrawalService.getUserTotalWithdrawals(userId!);
+      print('Total withdrawals: $totalAmount');
+      setState(() {
+        withdrawalAmount = totalAmount;
+      });
+      // Get only pending withdrawals total
+      final pendingAmount = await withdrawalService
+          .getUserTotalWithdrawals(userId, status: 'pending');
+      print('Pending withdrawals: $pendingAmount');
+
+      // Get only approved withdrawals total
+      final approvedAmount = await withdrawalService
+          .getUserTotalWithdrawals(userId, status: 'approved');
+      print('Approved withdrawals: $approvedAmount');
+
+      setState(() {});
+    } catch (e) {
+      print('Error: $e');
+      // Handle error, show snackbar, etc.
+    }
+  }
+
+  Future<void> _loadIncomeData() async {
+    try {
+      final userId = await UserApiService.getUserId();
+      if (userId == null) {
+        throw Exception('User ID not found');
+      }
+
+      // Load investment profits
+      final investmentResponse =
+          await _investmentService.getUserInvestments(userId);
+      if (investmentResponse['success']) {
+        final summary = investmentResponse['summary'];
+        _investmentProfit = summary.totalEarned;
+      }
+
+      // Load referral income
+      final referralResponse = await _referralService.getUserReferrals(userId);
+      if (referralResponse['success']) {
+        final commissions = referralResponse['commissions'];
+        _referralIncome = commissions.coin;
+      }
+
+      // Calculate total income
+      setState(() {
+        _totalIncome = _investmentProfit + _referralIncome;
+      });
+
+      print('Total income calculated: $_totalIncome');
+    } catch (e) {
+      print('Error loading income data: $e');
+      rethrow; // Re-throw to be caught by parent
+    }
+  }
 
   @override
   void initState() {
@@ -42,6 +122,8 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   Future<void> _loadUserIdAndFetchTransactions() async {
     try {
       final userId = await UserApiService.getUserId() ?? 0;
+      await _loadIncomeData();
+      await _fetchUserTotalWithdrawals();
 
       setState(() {
         _userId = userId;
@@ -141,9 +223,13 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
         // centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.white),
+            icon: const Icon(Icons.monetization_on, color: Colors.white),
             onPressed: () {
               // Handle notification icon press
+              showDialog(
+                context: context,
+                builder: (context) => ProfitHistoryDialog(userId: _userId),
+              );
             },
           ),
         ],
@@ -180,7 +266,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
         const Text("Total Balance",
             style: TextStyle(color: Colors.white, fontSize: 20)),
         const SizedBox(height: 8),
-        Text(formatter.format(_balance),
+        Text(formatter.format(_totalIncome - withdrawalAmount),
             style: const TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -325,8 +411,8 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                       tx['description'],
                       getFormattedTime(tx['time']), // Format time
                       _getDisplayAmountWithoutCharge(
-                          tx['display_amount']), // Remove 10%
-                      tx['type'] == 'income',
+                          tx['display_amount'], tx['type']),
+                      tx['type'] == 'income', // Remove 10%
                     ))
                 .toList(),
           ),
@@ -340,7 +426,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                       tx['description'],
                       getFormattedTime(tx['time']), // Format time
                       _getDisplayAmountWithoutCharge(
-                          tx['display_amount']), // Remove 10%
+                          tx['display_amount'], tx['type']), // Remove 10%
                       tx['type'] == 'income',
                     ))
                 .toList(),
@@ -355,7 +441,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                       tx['description'],
                       getFormattedTime(tx['time']), // Format time
                       _getDisplayAmountWithoutCharge(
-                          tx['display_amount']), // Remove 10%
+                          tx['display_amount'], tx['type']), // Remove 10%
                       tx['type'] == 'income',
                     ))
                 .toList(),
@@ -396,12 +482,25 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   }
 
 // Helper function to remove 10% charge from amount
-  String _getDisplayAmountWithoutCharge(String amountWithCharge) {
+  // Helper function to apply different deduction rates based on transaction type
+  String _getDisplayAmountWithoutCharge(String amountWithCharge, String type) {
     try {
-      final amount = double.parse(amountWithCharge);
-      final amountWithoutCharge = amount / 1.1;
-      return amountWithoutCharge
-          .toStringAsFixed(2); // Format to 2 decimal places
+      final amount =
+          double.parse(amountWithCharge.replaceAll(RegExp(r'[+\-]'), ''));
+      double adjustedAmount;
+
+      if (type == 'expense') {
+        // For withdrawals: deduct 3% fee
+        adjustedAmount = amount * 0.97;
+      } else if (type == 'income') {
+        // For deposits: deduct 10% fee
+        adjustedAmount = amount / 1.1;
+      } else {
+        // Fallback for any other types
+        adjustedAmount = amount;
+      }
+
+      return adjustedAmount.toStringAsFixed(2); // Format to 2 decimal places
     } catch (e) {
       return amountWithCharge; // Return original if parsing fails
     }

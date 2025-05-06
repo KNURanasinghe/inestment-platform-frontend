@@ -103,7 +103,7 @@ class AppTheme {
           case 2:
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const SetPinNavigator()),
+              MaterialPageRoute(builder: (context) => SetPinNavigator()),
             );
             break;
           case 3:

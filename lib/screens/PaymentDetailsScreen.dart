@@ -165,40 +165,35 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
     }
   }
 
-  Future<void> _updatePaymentStatus() async {
-    try {
-      // Check if this is the first coin deposit and user is not yet paid
-      if (widget.purpose == 'buy_coin' && !_isPayed) {
-        print('Updating user payment status to paid');
+  // Future<void> _updatePaymentStatus() async {
+  //   try {
+  //     // Check if this is the first coin deposit and user is not yet paid
+  //     if (widget.purpose == 'buy_coin' && !_isPayed) {
+  //       print('Updating user payment status to paid');
 
-        // Call API to update payment status
-        final updateResponse =
-            await _userApiService.updatePaymentStatus(_userId, true);
+  //       // // Call API to update payment status
+  //       // final updateResponse =
+  //       //     await _userApiService.updatePaymentStatus(_userId, true);
 
-        if (updateResponse['success']) {
-          print('Payment status updated successfully');
-          setState(() {
-            _isPayed = true;
-          });
+  //       if (updateResponse['success']) {
+  //         print('Payment status updated successfully');
+  //         // setState(() {
+  //         //   _isPayed = true;
+  //         // });
 
-          // Update the shared preferences or other local storage if needed
-          final prefs = await SharedPreferences.getInstance();
-          // You might want to store this in shared preferences if you use it elsewhere
-          await prefs.setBool('is_payed', true);
-
-          return;
-        } else {
-          print(
-              'Failed to update payment status: ${updateResponse['message']}');
-          throw Exception(
-              'Failed to update payment status: ${updateResponse['message']}');
-        }
-      }
-    } catch (e) {
-      print('Error updating payment status: $e');
-      rethrow; // Rethrow to be caught by the calling function
-    }
-  }
+  //         return;
+  //       } else {
+  //         print(
+  //             'Failed to update payment status: ${updateResponse['message']}');
+  //         throw Exception(
+  //             'Failed to update payment status: ${updateResponse['message']}');
+  //       }
+  //     }
+  //   } catch (e) {
+  //     print('Error updating payment status: $e');
+  //     rethrow; // Rethrow to be caught by the calling function
+  //   }
+  // }
 
   Future<void> _submitDeposit() async {
     // Validate image is selected
@@ -237,10 +232,10 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
       );
 
       // If this is a coin deposit and user hasn't paid yet, update payment status
-      if (widget.purpose == 'buy_coin' && !_isPayed) {
-        await _updatePaymentStatus();
-        print('Payment status updated to paid');
-      }
+      // if (widget.purpose == 'buy_coin' && !_isPayed) {
+      //   await _updatePaymentStatus();
+      //   print('Payment status updated to paid');
+      // }
 
       setState(() {
         _isLoading = false;

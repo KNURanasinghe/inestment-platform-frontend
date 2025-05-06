@@ -57,6 +57,11 @@ class _DepositScreenState extends State<DepositScreen> {
         if (userProfileResponse['success']) {
           // Extract isPayed status from user data
           _isPayed = userProfileResponse['userData']['isPayed'] ?? false;
+          // Update the shared preferences or other local storage if needed
+          final prefs = await SharedPreferences.getInstance();
+          // You might want to store this in shared preferences if you use it elsewhere
+          await prefs.setBool('is_payed', true);
+
           print('User payment status: $_isPayed');
         }
 

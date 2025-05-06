@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import '../services/user_service.dart';
+import '../services/withdrawal_service.dart';
 import 'Bank_Account_Details.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
 
 class WithdrawPage extends StatefulWidget {
-  const WithdrawPage({super.key});
+  final double balance; // Add this parameter
+
+  const WithdrawPage({
+    super.key,
+    this.balance = 0.0, // Default value if not provided
+  });
 
   @override
   State<WithdrawPage> createState() => _WithdrawPageState();
@@ -112,16 +119,6 @@ class _WithdrawPageState extends State<WithdrawPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      // appBar: AppBar(
-      //   backgroundColor: Colors.transparent,
-      //   elevation: 0,
-      //   title: const Text(
-      //     "Withdraw Funds",
-      //     style: TextStyle(color: Colors.white, fontSize: 20),
-      //   ),
-      //   centerTitle: true,
-      //   iconTheme: const IconThemeData(color: Colors.white),
-      // ),
       body: Stack(
         children: [
           AppTheme.appBackground(),
@@ -144,9 +141,9 @@ class _WithdrawPageState extends State<WithdrawPage> {
                     style: TextStyle(color: Colors.white70, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    "LKR12,458.90",
-                    style: TextStyle(
+                  Text(
+                    "LKR${widget.balance.toStringAsFixed(2)}", // Use the balance parameter here
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -267,9 +264,8 @@ class _WithdrawPageState extends State<WithdrawPage> {
                   const SizedBox(height: 30),
                   GestureDetector(
                     onTap: () {
-                      // Navigate to Bank Account Details Page
+                      // Validate withdrawal amount
                       if (amount.text.isEmpty) {
-                        // Show error message with custom SnackBar
                         _showCustomSnackBar(context,
                             "Please enter an amount to withdraw", false);
                       } else if (double.tryParse(amount.text) == null) {
@@ -284,6 +280,10 @@ class _WithdrawPageState extends State<WithdrawPage> {
                       } else if (double.parse(amount.text) > 1000000) {
                         _showCustomSnackBar(context,
                             "Maximum withdrawal amount is LKR1,000,000", false);
+                      } else if (double.parse(amount.text) > widget.balance) {
+                        // Add a new validation for insufficient balance
+                        _showCustomSnackBar(context,
+                            "Insufficient balance for this withdrawal", false);
                       } else {
                         // Show success message before navigating
                         _showCustomSnackBar(
@@ -295,8 +295,8 @@ class _WithdrawPageState extends State<WithdrawPage> {
                             context,
                             MaterialPageRoute(
                                 builder: (context) => BankDetailsPage(
-                                      amount:
-                                          finalAmount, // Pass the final amount after fee deduction
+                                      amount: double.tryParse(amount.text) ??
+                                          0, // Pass the final amount after fee deduction
                                     )),
                           );
                         });

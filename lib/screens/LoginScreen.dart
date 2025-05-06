@@ -99,132 +99,136 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Expanded(
                       flex: 8,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.max,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Hello,',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const Text(
-                            'Welcome back',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 110),
-
-                          // NIC Number input
-                          TextField(
-                            style: const TextStyle(color: Colors.white),
-                            controller: _nicController,
-                            decoration: InputDecoration(
-                              hintText: 'NIC Number',
-                              hintStyle: const TextStyle(color: Colors.white),
-                              filled: true,
-                              fillColor: AppTheme.textFieldColor,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
-                                borderSide: BorderSide.none,
-                              ),
-                              prefixIcon: const Icon(
-                                Icons
-                                    .credit_card_outlined, // Identity card icon
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.max,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 40),
+                            const Text(
+                              'Hello,',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Password input with visibility toggle
-                          TextField(
-                            style: const TextStyle(color: Colors.white),
-                            controller: _passwordController,
-                            obscureText:
-                                _obscureText, // Toggle password visibility
-                            decoration: InputDecoration(
-                              hintText: 'Password',
-                              hintStyle: const TextStyle(color: Colors.white),
-                              filled: true,
-                              fillColor: AppTheme.textFieldColor,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
-                                borderSide: BorderSide.none,
-                              ),
-                              prefixIcon: const Icon(
-                                Icons.lock, // Lock icon
+                            const Text(
+                              'Welcome back',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscureText
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
+                            ),
+                            const SizedBox(height: 110),
+
+                            // NIC Number input
+                            TextField(
+                              style: const TextStyle(color: Colors.white),
+                              controller: _nicController,
+                              decoration: InputDecoration(
+                                hintText: 'NIC Number',
+                                hintStyle: const TextStyle(color: Colors.white),
+                                filled: true,
+                                fillColor: AppTheme.textFieldColor,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: BorderSide.none,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons
+                                      .credit_card_outlined, // Identity card icon
                                   color: Colors.white,
                                 ),
-                                onPressed: () {
-                                  setState(() {
-                                    _obscureText =
-                                        !_obscureText; // Toggle visibility
-                                  });
-                                },
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 5),
+                            const SizedBox(height: 20),
 
-                          // Remember me checkbox
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Checkbox(
-                                value: rememberMe,
-                                onChanged: (bool? value) {
-                                  setState(() {
-                                    rememberMe = value!;
-                                  });
-                                },
-                                activeColor: Colors.white,
+                            // Password input with visibility toggle
+                            TextField(
+                              style: const TextStyle(color: Colors.white),
+                              controller: _passwordController,
+                              obscureText:
+                                  _obscureText, // Toggle password visibility
+                              decoration: InputDecoration(
+                                hintText: 'Password',
+                                hintStyle: const TextStyle(color: Colors.white),
+                                filled: true,
+                                fillColor: AppTheme.textFieldColor,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: BorderSide.none,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.lock, // Lock icon
+                                  color: Colors.white,
+                                ),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscureText
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    color: Colors.white,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _obscureText =
+                                          !_obscureText; // Toggle visibility
+                                    });
+                                  },
+                                ),
                               ),
-                              const Text(
-                                'Remember me',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 40),
-
-                          // Gradient Login button
-                          Container(
-                            width: width,
-                            decoration: AppTheme.buttonDecoration(),
-                            child: ElevatedButton(
-                              style: AppTheme.buttonStyle(),
-                              onPressed: _isLoading ? null : _login,
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                          color: Colors.white, strokeWidth: 2),
-                                    )
-                                  : const Text(
-                                      'Log In',
-                                      style: TextStyle(
-                                          color: Colors.white, fontSize: 18),
-                                    ),
                             ),
-                          ),
-                          const SizedBox(height: 20),
-                        ],
+                            const SizedBox(height: 5),
+
+                            // Remember me checkbox
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Checkbox(
+                                  value: rememberMe,
+                                  onChanged: (bool? value) {
+                                    setState(() {
+                                      rememberMe = value!;
+                                    });
+                                  },
+                                  activeColor: Colors.white,
+                                ),
+                                const Text(
+                                  'Remember me',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 40),
+
+                            // Gradient Login button
+                            Container(
+                              width: width,
+                              decoration: AppTheme.buttonDecoration(),
+                              child: ElevatedButton(
+                                style: AppTheme.buttonStyle(),
+                                onPressed: _isLoading ? null : _login,
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2),
+                                      )
+                                    : const Text(
+                                        'Log In',
+                                        style: TextStyle(
+                                            color: Colors.white, fontSize: 18),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
                       ),
                     ),
                     Expanded(
