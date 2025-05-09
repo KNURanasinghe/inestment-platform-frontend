@@ -81,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen>
   final bool _isDropdownOpen = false;
 
   double withdrawalAmount = 0.0;
+  int _totalReferralsCount = 0;
 
   // Services
   final UserApiService _userApiService = UserApiService(
@@ -817,6 +818,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  // First, modify your _loadReferrals method in the _HomeScreenState class
   Future<void> _loadReferrals() async {
     setState(() {
       _isLoadingReferrals = true;
@@ -826,18 +828,30 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       // Get referral data from the API
       final response = await _referralService.getUserReferrals(_userId);
+      print('response home $response');
 
       if (response['success']) {
         final directReferrals = response['directReferrals'];
         final commissions = response['commissions'];
 
+        // Extract totalReferralsCount from the response
+        final totalReferralsCount = response['totalReferralsCount'] ?? 0;
+
         setState(() {
           _directReferrals = directReferrals;
-          _referralIncome = commissions.coin; // Get income from coin referrals
+          // Correctly set the referral income to the coin commission only
+          // The issue is here - you're adding coin to itself (doubling it)
+          _referralIncome = commissions.coin +
+              commissions.investment; // Sum of coin + investment commissions
           _isLoadingReferrals = false;
+          _totalReferralsCount = totalReferralsCount; // Update the total count
         });
         print(
-            'Referrals loaded: ${_directReferrals.length}, Referral income: $_referralIncome');
+            'Referrals loaded: ${_directReferrals.length}, Referral income: $_referralIncome, Total referrals: $_totalReferralsCount');
+
+        // Optionally log the individual components
+        print(
+            'Referral coin income: ${commissions.coin}, Referral investment income: ${commissions.investment}');
       } else {
         setState(() {
           _referralsError = response['message'] ?? 'Failed to load referrals';
@@ -1702,8 +1716,33 @@ class _HomeScreenState extends State<HomeScreen>
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            const Icon(Icons.people,
-                                                color: Colors.white, size: 16),
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.people,
+                                                    color: Colors.white,
+                                                    size: 16),
+                                                const Spacer(),
+                                                _isLoadingReferrals
+                                                    ? SizedBox(
+                                                        width: 14,
+                                                        height: 14,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                          color: Colors.white,
+                                                          strokeWidth: 2,
+                                                        ),
+                                                      )
+                                                    : Text(
+                                                        '$_totalReferralsCount', // Display the total referrals count
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 13,
+                                                        ),
+                                                      ),
+                                              ],
+                                            ),
                                             Expanded(
                                               child: Center(
                                                 child: Column(

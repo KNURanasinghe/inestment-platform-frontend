@@ -14,6 +14,7 @@ import '../services/investment_service.dart';
 import '../services/referral_service.dart';
 import '../services/withdrawal_service.dart';
 import 'ProfitHistoryDialog.dart';
+import 'reerral_history.dart';
 
 class TransactionHistoryPage extends StatefulWidget {
   const TransactionHistoryPage({super.key});
@@ -223,13 +224,12 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
         // centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.monetization_on, color: Colors.white),
+            icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: () {
-              // Handle notification icon press
-              showDialog(
-                context: context,
-                builder: (context) => ProfitHistoryDialog(userId: _userId),
-              );
+              setState(() {
+                _isLoading = true;
+              });
+              _fetchTransactionHistory();
             },
           ),
         ],
@@ -263,10 +263,10 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Total Balance",
+        const Text("Total Withdrawals",
             style: TextStyle(color: Colors.white, fontSize: 20)),
         const SizedBox(height: 8),
-        Text(formatter.format(_totalIncome - withdrawalAmount),
+        Text(formatter.format(withdrawalAmount),
             style: const TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -282,19 +282,45 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
         Row(
           children: [
             _buildTab("All", isSelected: _currentFilter == "All"),
-            _buildTab("Income", isSelected: _currentFilter == "Income"),
-            _buildTab("Expense", isSelected: _currentFilter == "Expense"),
+            _buildTab("Inflore", isSelected: _currentFilter == "Income"),
+            _buildTab("Outflore", isSelected: _currentFilter == "Expense"),
           ],
         ),
-        IconButton(
-          icon: const Icon(Icons.refresh, color: Colors.white),
-          onPressed: () {
-            setState(() {
-              _isLoading = true;
-            });
-            _fetchTransactionHistory();
-          },
-        ),
+        GestureDetector(
+            onTap: () {
+              // Handle notification icon press
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          const ReferralProfitHistoryScreen()));
+            },
+            child: SizedBox(
+                height: 35,
+                width: 35,
+                child: Image.asset(
+                    'assets/402-4023672_referrals-corporate-commercial-icon.png'))),
+        GestureDetector(
+            onTap: () {
+              // Handle notification icon press
+              showDialog(
+                context: context,
+                builder: (context) => ProfitHistoryDialog(userId: _userId),
+              );
+            },
+            child: SizedBox(
+                height: 35, width: 35, child: Image.asset('assets/gift.png'))),
+
+        // IconButton(
+        //   icon: const Icon(Icons., color: Colors.white),
+        //   onPressed: () {
+        //     // Handle notification icon press
+        //     showDialog(
+        //       context: context,
+        //       builder: (context) => ProfitHistoryDialog(userId: _userId),
+        //     );
+        //   },
+        // ),
       ],
     );
   }
@@ -303,7 +329,11 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     return TextButton(
       onPressed: () {
         setState(() {
-          _currentFilter = title;
+          _currentFilter = title == 'All'
+              ? 'All'
+              : title == 'Inflore'
+                  ? 'Income'
+                  : 'Expense';
         });
       },
       style: TextButton.styleFrom(

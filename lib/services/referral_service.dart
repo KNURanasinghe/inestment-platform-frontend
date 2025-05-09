@@ -107,6 +107,26 @@ class ReferralCommission {
   }
 }
 
+class CommissionSummaryItem {
+  final String type;
+  final int level;
+  final double total;
+
+  CommissionSummaryItem({
+    required this.type,
+    required this.level,
+    required this.total,
+  });
+
+  factory CommissionSummaryItem.fromJson(Map<String, dynamic> json) {
+    return CommissionSummaryItem(
+      type: json['type'] ?? '',
+      level: json['level'] ?? 0,
+      total: double.tryParse(json['total']?.toString() ?? '0') ?? 0.0,
+    );
+  }
+}
+
 class CommissionSummary {
   final String type;
   final int level;
@@ -184,6 +204,52 @@ class ReferralService {
     }
   }
 
+  Future<Map<String, dynamic>> getUserCommissions(int userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/users/$userId/commissions'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        // Check if data has the expected structure
+        if (data['commissions'] == null || data['summary'] == null) {
+          return {
+            'success': false,
+            'message': 'Invalid commission data structure',
+          };
+        }
+
+        final List<ReferralCommission> commissions =
+            (data['commissions'] as List)
+                .map((item) => ReferralCommission.fromJson(item))
+                .toList();
+
+        final List<CommissionSummaryItem> summary = (data['summary'] as List)
+            .map((item) => CommissionSummaryItem.fromJson(item))
+            .toList();
+
+        return {
+          'success': true,
+          'commissions': commissions,
+          'summary': summary,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to load commissions: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      print('Error parsing commissions: $e');
+      return {
+        'success': false,
+        'message': 'Error parsing commission data: $e',
+      };
+    }
+  }
+
   // Get user's referrals (people they've referred)
   Future<Map<String, dynamic>> getUserReferrals(int userId) async {
     try {
@@ -220,6 +286,7 @@ class ReferralService {
           'directReferrals': directReferrals,
           'levelCounts': levelCounts,
           'commissions': commissions,
+          'totalReferralsCount': data['totalReferralsCount']
         };
       } else {
         return {
