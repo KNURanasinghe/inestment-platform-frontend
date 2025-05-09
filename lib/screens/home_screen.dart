@@ -8,7 +8,7 @@ import 'package:investment_plan_app/services/user_service.dart';
 import 'package:investment_plan_app/services/coin_service.dart';
 import 'package:investment_plan_app/services/investment_service.dart';
 import 'package:investment_plan_app/services/referral_service.dart';
-
+import 'package:carousel_slider/carousel_slider.dart';
 import '../services/deposit_service.dart';
 import '../services/withdrawal_service.dart';
 
@@ -21,6 +21,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
+  final CarouselSliderController _carouselController =
+      CarouselSliderController();
+  int _walletCurrentPage = 0;
   final int _currentIndex = 0;
   double _userCoinCount = 0.0;
   double _userCoinValueLKR = 0.0;
@@ -197,6 +200,51 @@ class _HomeScreenState extends State<HomeScreen>
         print('PageView not mounted or widget disposed');
       }
     });
+  }
+
+  Widget _buildWalletSection() {
+    return Column(
+      children: [
+        CarouselSlider(
+          carouselController: _carouselController,
+          options: CarouselOptions(
+            height: 200,
+            aspectRatio: 16 / 9,
+            viewportFraction: 0.9,
+            initialPage: 0,
+            enableInfiniteScroll: true,
+            reverse: false,
+            autoPlay: true,
+            autoPlayInterval: Duration(seconds: 5),
+            autoPlayAnimationDuration: Duration(milliseconds: 800),
+            autoPlayCurve: Curves.fastOutSlowIn,
+            enlargeCenterPage: true,
+            enlargeFactor: 0.3,
+            onPageChanged: (index, reason) {
+              setState(() {
+                _walletCurrentPage = index;
+              });
+            },
+            scrollDirection: Axis.horizontal,
+          ),
+          items: [
+            _userCoinInfoWidget(),
+            _buildInvestmentWalletSlide(),
+          ],
+        ),
+        // Dot indicators
+        Padding(
+          padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              2,
+              (index) => _buildWalletDotIndicator(index),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   // Coin value modification
@@ -950,14 +998,14 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // Build dot indicator widget
-  Widget _buildDotIndicator(int index) {
+  Widget _buildWalletDotIndicator(int index) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       margin: const EdgeInsets.symmetric(horizontal: 5),
       height: 8,
       width: 8,
       decoration: BoxDecoration(
-        color: _currentPage == index
+        color: _walletCurrentPage == index
             ? Colors.white
             : Colors.white.withOpacity(0.4),
         borderRadius: BorderRadius.circular(4),
@@ -1005,59 +1053,83 @@ class _HomeScreenState extends State<HomeScreen>
   _userCoinInfoWidget() {
     print(
         'Value: LKR  $_userCoinCount * $_coinValue ${(_userCoinCount * _coinValue).toStringAsFixed(2)}');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const Text(
-          'T E C WALLET',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+    return Container(
+        margin: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.purple.withOpacity(0.6),
+              Colors.blue.withOpacity(0.4),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+          borderRadius: BorderRadius.circular(16.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              spreadRadius: 2,
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Icon(Icons.monetization_on, color: Colors.amber, size: 24),
-            const SizedBox(width: 8),
-            _isLoadingUserCoins
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ))
+            const Text(
+              'T E C WALLET',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                    height: 45,
+                    width: 45,
+                    child: Image.asset('assets/coin.png')),
+                const SizedBox(width: 8),
+                _isLoadingUserCoins
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ))
+                    : Text(
+                        '${_userCoinCount.toInt()} Coins',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _isLoadingUserCoins || _isLoadingCoinValue
+                ? Text(
+                    'Loading value...',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 16,
+                    ),
+                  )
                 : Text(
-                    '${_userCoinCount.toInt()} Coins',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    'Value: LKR ${(_userCoinCount * _coinValue).toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 16,
                     ),
                   ),
           ],
-        ),
-        const SizedBox(height: 8),
-        _isLoadingUserCoins || _isLoadingCoinValue
-            ? Text(
-                'Loading value...',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
-                  fontSize: 16,
-                ),
-              )
-            : Text(
-                'Value: LKR ${(_userCoinCount * _coinValue).toStringAsFixed(2)}',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: 16,
-                ),
-              ),
-      ],
-    );
+        ));
   }
 
   // Investment summary widget to show coin deposits and investment deposits
@@ -1287,171 +1359,65 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
 
                             // Slidable containers with PageView
-                            Column(
-                              children: [
-                                SizedBox(
-                                  height: 200,
-                                  width: width,
-                                  child: PageView(
-                                      controller: _pageController,
-                                      onPageChanged: (int page) {
-                                        setState(() {
-                                          _currentPage = page;
-                                        });
-                                      },
-                                      children: [
-                                        // First slide - Coin information
-                                        Container(
-                                          margin: const EdgeInsets.all(16.0),
-                                          padding: const EdgeInsets.all(16.0),
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                Colors.purple.withOpacity(0.6),
-                                                Colors.blue.withOpacity(0.4),
-                                              ],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                            ),
-                                            borderRadius:
-                                                BorderRadius.circular(16.0),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black
-                                                    .withOpacity(0.1),
-                                                blurRadius: 10,
-                                                spreadRadius: 2,
-                                              ),
-                                            ],
-                                          ),
-                                          child: Center(
-                                            child: _userCoinInfoWidget(),
-                                          ),
-                                        ),
+                            // Column(
+                            //   children: [
+                            //     SizedBox(
+                            //       height: 200,
+                            //       width: width,
+                            //       child: PageView(
+                            //           controller: _pageController,
+                            //           onPageChanged: (int page) {
+                            //             setState(() {
+                            //               _currentPage = page;
+                            //             });
+                            //           },
+                            //           children: [
+                            // First slide - Coin information
+                            // Container(
+                            //   margin: const EdgeInsets.all(16.0),
+                            //   padding: const EdgeInsets.all(16.0),
+                            //   decoration: BoxDecoration(
+                            //     gradient: LinearGradient(
+                            //       colors: [
+                            //         Colors.purple.withOpacity(0.6),
+                            //         Colors.blue.withOpacity(0.4),
+                            //       ],
+                            //       begin: Alignment.topLeft,
+                            //       end: Alignment.bottomRight,
+                            //     ),
+                            //     borderRadius:
+                            //         BorderRadius.circular(16.0),
+                            //     boxShadow: [
+                            //       BoxShadow(
+                            //         color: Colors.black
+                            //             .withOpacity(0.1),
+                            //         blurRadius: 10,
+                            //         spreadRadius: 2,
+                            //       ),
+                            //     ],
+                            //   ),
+                            //   child: Center(
+                            //     child: _userCoinInfoWidget(),
+                            //   ),
+                            // ),
 
-                                        // Second slide - Editable text
-                                        //   Container(
-                                        //     margin: const EdgeInsets.all(16.0),
-                                        //     padding: const EdgeInsets.all(
-                                        //         12.0), // Reduced padding
-                                        //     decoration: BoxDecoration(
-                                        //       gradient: LinearGradient(
-                                        //         colors: [
-                                        //           Colors.purple.withOpacity(0.6),
-                                        //           Colors.blue.withOpacity(0.4),
-                                        //         ],
-                                        //         begin: Alignment.topLeft,
-                                        //         end: Alignment.bottomRight,
-                                        //       ),
-                                        //       borderRadius:
-                                        //           BorderRadius.circular(16.0),
-                                        //       boxShadow: [
-                                        //         BoxShadow(
-                                        //           color:
-                                        //               Colors.black.withOpacity(0.1),
-                                        //           blurRadius: 10,
-                                        //           spreadRadius: 2,
-                                        //         ),
-                                        //       ],
-                                        //     ),
-                                        //     child: Column(
-                                        //       mainAxisSize: MainAxisSize
-                                        //           .min, // Ensure minimal height
-                                        //       mainAxisAlignment:
-                                        //           MainAxisAlignment.center,
-                                        //       children: [
-                                        //         const Text(
-                                        //           'INVESTMENT WALLET',
-                                        //           style: TextStyle(
-                                        //             color: Colors.white,
-                                        //             fontSize: 16, // Smaller font
-                                        //             fontWeight: FontWeight.bold,
-                                        //           ),
-                                        //         ),
-                                        //         const SizedBox(
-                                        //             height: 12), // Reduced spacing
-                                        //         Row(
-                                        //           mainAxisAlignment:
-                                        //               MainAxisAlignment.center,
-                                        //           children: [
-                                        //             const Icon(
-                                        //                 Icons.account_balance_wallet,
-                                        //                 color: Colors.amber,
-                                        //                 size: 22), // Smaller icon
-                                        //             const SizedBox(
-                                        //                 width: 6), // Reduced spacing
-                                        //             Text(
-                                        //               '\$${_investmentProfit.toStringAsFixed(2)}',
-                                        //               style: const TextStyle(
-                                        //                 color: Colors.white,
-                                        //                 fontSize: 22, // Smaller font
-                                        //                 fontWeight: FontWeight.bold,
-                                        //               ),
-                                        //             ),
-                                        //           ],
-                                        //         ),
-                                        //         const SizedBox(
-                                        //             height: 12), // Reduced spacing
-                                        //         // Empty dropdown button with reduced height
-                                        //         Container(
-                                        //           width: double.infinity,
-                                        //           padding: const EdgeInsets.symmetric(
-                                        //               horizontal: 10,
-                                        //               vertical: 6), // Smaller padding
-                                        //           decoration: BoxDecoration(
-                                        //             color:
-                                        //                 Colors.white.withOpacity(0.1),
-                                        //             borderRadius:
-                                        //                 BorderRadius.circular(
-                                        //                     6), // Smaller radius
-                                        //             border: Border.all(
-                                        //                 color: Colors.white
-                                        //                     .withOpacity(0.3),
-                                        //                 width: 1),
-                                        //           ),
-                                        //           child: Row(
-                                        //             mainAxisAlignment:
-                                        //                 MainAxisAlignment
-                                        //                     .spaceBetween,
-                                        //             children: [
-                                        //               Text(
-                                        //                 'Select Options',
-                                        //                 style: TextStyle(
-                                        //                   color: Colors.white
-                                        //                       .withOpacity(0.8),
-                                        //                   fontSize:
-                                        //                       14, // Smaller font
-                                        //                 ),
-                                        //               ),
-                                        //               Icon(
-                                        //                 Icons.arrow_drop_down,
-                                        //                 color: Colors.white,
-                                        //                 size: 20, // Smaller icon
-                                        //               ),
-                                        //             ],
-                                        //           ),
-                                        //         ),
-                                        //       ],
-                                        //     ),
-                                        //   )
-                                        // ],
-                                        _buildInvestmentWalletSlide(),
-                                      ]),
-                                ),
-                                // Dot indicators for pagination
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 16.0),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: List.generate(
-                                      2,
-                                      (index) => _buildDotIndicator(index),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-
+                            // _buildInvestmentWalletSlide(),
+                            //       ]),
+                            // ),
+                            // Dot indicators for pagination
+                            // Padding(
+                            //   padding: const EdgeInsets.only(bottom: 16.0),
+                            //   child: Row(
+                            //     mainAxisAlignment: MainAxisAlignment.center,
+                            //     children: List.generate(
+                            //       2,
+                            //       (index) => _buildDotIndicator(index),
+                            //     ),
+                            //   ),
+                            // ),
+                            //   ],
+                            // ),
+                            _buildWalletSection(),
                             // // Golden tape profit container
                             // Padding(
                             //   padding:
@@ -2109,36 +2075,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildWalletInfoItemCompact(String label, String value) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
-            fontSize: 12, // Smaller font
-          ),
-          textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-        ),
-        const SizedBox(height: 2), // Reduced spacing
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 14, // Smaller font
-          ),
-          textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-        ),
-      ],
-    );
-  }
-
   Widget _buildInvestmentWalletSlide() {
     return Container(
       margin: const EdgeInsets.all(16.0),
@@ -2176,8 +2112,10 @@ class _HomeScreenState extends State<HomeScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.account_balance_wallet,
-                  color: Colors.amber, size: 22),
+              SizedBox(
+                  height: 45,
+                  width: 45,
+                  child: Image.asset('assets/icons8-wallet-96.png')),
               const SizedBox(width: 6),
               _isLoadingDeposits
                   ? SizedBox(

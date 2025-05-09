@@ -128,6 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             TextField(
                               style: const TextStyle(color: Colors.white),
                               controller: _nicController,
+                              cursorColor: Colors.white,
                               decoration: InputDecoration(
                                 hintText: 'NIC Number',
                                 hintStyle: const TextStyle(color: Colors.white),
@@ -150,6 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             TextField(
                               style: const TextStyle(color: Colors.white),
                               controller: _passwordController,
+                              cursorColor: Colors.white,
                               obscureText:
                                   _obscureText, // Toggle password visibility
                               decoration: InputDecoration(

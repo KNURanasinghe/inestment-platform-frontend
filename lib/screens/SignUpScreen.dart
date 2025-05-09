@@ -257,6 +257,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       const SizedBox(height: 50),
                       TextFormField(
                         controller: _nameController,
+                        cursorColor: Colors.white,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: 'Name',
@@ -282,6 +283,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       const SizedBox(height: 20),
                       TextFormField(
                         controller: _emailController,
+                        cursorColor: Colors.white,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: 'Email',
@@ -310,6 +312,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       const SizedBox(height: 20),
                       TextFormField(
+                        cursorColor: Colors.white,
                         controller: _phoneController,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
@@ -338,6 +341,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       const SizedBox(height: 20),
                       TextFormField(
+                        cursorColor: Colors.white,
                         controller: _nicController,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
@@ -363,6 +367,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       const SizedBox(height: 20),
                       TextFormField(
+                        cursorColor: Colors.white,
                         controller: _usernameController,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
@@ -391,6 +396,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       const SizedBox(height: 20),
                       TextFormField(
+                        cursorColor: Colors.white,
                         controller: _passwordController,
                         style: const TextStyle(color: Colors.white),
                         obscureText: _obscureText,
@@ -433,6 +439,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       const SizedBox(height: 20),
                       TextFormField(
+                        cursorColor: Colors.white,
                         controller: _addressController,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
@@ -451,6 +458,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       const SizedBox(height: 20),
                       TextFormField(
+                        cursorColor: Colors.white,
                         controller: _countryController,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
@@ -469,6 +477,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       const SizedBox(height: 20),
                       TextFormField(
+                        cursorColor: Colors.white,
                         controller: _refController,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
