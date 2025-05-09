@@ -10,6 +10,8 @@ import 'package:investment_plan_app/services/deposit_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/bankdetails_service.dart';
+
 class PaymentDetailsScreen extends StatefulWidget {
   final double? totalAmount;
   final String? purpose;
@@ -20,7 +22,8 @@ class PaymentDetailsScreen extends StatefulWidget {
   State<PaymentDetailsScreen> createState() => _PaymentDetailsScreenState();
 }
 
-class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
+class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
+    with SingleTickerProviderStateMixin {
   final DepositService _depositService = DepositService(
     // Update with your API base URL
     baseUrl: 'http://151.106.125.212:5021',
@@ -30,6 +33,11 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
     baseUrl: 'http://151.106.125.212:5021',
   );
 
+  final BankDetailsService _bankDetailsService = BankDetailsService(
+    baseUrl: 'http://151.106.125.212:5021',
+  );
+
+  late TabController _tabController;
   File? _selectedImage;
   bool _isLoading = false;
   String? _errorMessage;
@@ -37,10 +45,49 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
   int _userId = 0;
   bool _isPayed = false;
 
+  BankDetails? firstBankDetail;
+  String? bankQrCodeUrl;
+  String? usdtQrCodeUrl;
+
+  // Assume USDT wallet holder name comes from the same bank details
+  String usdtHolderName = "T.E.C Dynamic Works (Pvt) Ltd";
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _getBankDetails();
     _loadUserData();
+    _getQrCodes();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // Add method to get QR codes from your database
+  Future<void> _getQrCodes() async {
+    try {
+      // This is a placeholder. Replace with your actual API call
+      // For example:
+      // final qrResponse = await _bankDetailsService.getQrCodes();
+      // if (qrResponse['success']) {
+      //   setState(() {
+      //     bankQrCodeUrl = qrResponse['bankQrUrl'];
+      //     usdtQrCodeUrl = qrResponse['usdtQrUrl'];
+      //   });
+      // }
+
+      // For now, let's assume these are the URLs (replace with your actual API endpoints)
+      setState(() {
+        bankQrCodeUrl = 'http://151.106.125.212:5021/api/qrcodes/bank_qr.png';
+        usdtQrCodeUrl = 'http://151.106.125.212:5021/api/qrcodes/usdt_qr.png';
+      });
+    } catch (e) {
+      print('Error getting QR codes: $e');
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -69,6 +116,43 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
       print('Error loading user data: $e');
       _showCustomSnackBar(
           context, 'Error loading user data: ${e.toString()}', false);
+    }
+  }
+
+  Future<void> _getBankDetails() async {
+    try {
+      final bankDetailsResponse =
+          await _bankDetailsService.getActiveBankDetails();
+      if (bankDetailsResponse['success']) {
+        // Get the list of bank details
+        final List<BankDetails> bankDetailsList =
+            bankDetailsResponse['bankDetails'];
+
+        // Check if the list is not empty
+        if (bankDetailsList.isNotEmpty) {
+          // Access the first bank detail
+          setState(() {
+            firstBankDetail = bankDetailsList[0];
+          });
+          print('Bank details loaded successfully. ID: ${firstBankDetail!.id}');
+
+          // You can now access other properties of the first bank detail
+          print('Bank Name: ${firstBankDetail!.bankName}');
+          print('Account Holder: ${firstBankDetail!.accountHolderName}');
+
+          // Or if you need to work with all bank details
+          for (var bankDetail in bankDetailsList) {
+            print('Bank ID: ${bankDetail.id}, Name: ${bankDetail.bankName}');
+          }
+        } else {
+          print('No bank details found');
+        }
+      } else {
+        // Handle error response
+        print('Error loading bank details: ${bankDetailsResponse['message']}');
+      }
+    } catch (e) {
+      print('Error loading bank details: $e');
     }
   }
 
@@ -165,36 +249,6 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
     }
   }
 
-  // Future<void> _updatePaymentStatus() async {
-  //   try {
-  //     // Check if this is the first coin deposit and user is not yet paid
-  //     if (widget.purpose == 'buy_coin' && !_isPayed) {
-  //       print('Updating user payment status to paid');
-
-  //       // // Call API to update payment status
-  //       // final updateResponse =
-  //       //     await _userApiService.updatePaymentStatus(_userId, true);
-
-  //       if (updateResponse['success']) {
-  //         print('Payment status updated successfully');
-  //         // setState(() {
-  //         //   _isPayed = true;
-  //         // });
-
-  //         return;
-  //       } else {
-  //         print(
-  //             'Failed to update payment status: ${updateResponse['message']}');
-  //         throw Exception(
-  //             'Failed to update payment status: ${updateResponse['message']}');
-  //       }
-  //     }
-  //   } catch (e) {
-  //     print('Error updating payment status: $e');
-  //     rethrow; // Rethrow to be caught by the calling function
-  //   }
-  // }
-
   Future<void> _submitDeposit() async {
     // Validate image is selected
     if (_selectedImage == null) {
@@ -230,12 +284,6 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
         imageFile: _selectedImage!,
         purpose: widget.purpose!,
       );
-
-      // If this is a coin deposit and user hasn't paid yet, update payment status
-      // if (widget.purpose == 'buy_coin' && !_isPayed) {
-      //   await _updatePaymentStatus();
-      //   print('Payment status updated to paid');
-      // }
 
       setState(() {
         _isLoading = false;
@@ -329,261 +377,515 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
             ),
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: AppTheme.primaryColor,
+          indicatorWeight: 3,
+          tabs: const [
+            Tab(
+              icon: Icon(Icons.account_balance),
+              text: "Bank Transfer",
+            ),
+            Tab(
+              icon: Icon(Icons.currency_bitcoin),
+              text: "USDT Transfer",
+            ),
+          ],
+        ),
       ),
       body: Stack(
         children: [
           AppTheme.appBackground(),
-          SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: width,
-                    decoration: AppTheme.boxDecoration(),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        _buildDetailRow("Bank Name", "Your Bank"),
-                        _buildDetailRow("Account Holder Name", "John Doe"),
-                        _buildDetailRow("Account Number", "123456789"),
-                        _buildDetailRow("Routing Number", "987654"),
-                        _buildDetailRow("Swift Code", "SWIFT123"),
-                      ],
-                    ),
-                  ),
+          firstBankDetail == null
+              ? const Center(child: CircularProgressIndicator())
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // Bank Transfer Tab
+                    _buildBankTransferTab(width),
 
-                  const SizedBox(height: 20),
-
-                  // Display payment purpose
-                  if (widget.purpose != null) ...[
-                    Text("Payment Purpose", style: AppTheme.textStyleBold),
-                    Container(
-                      width: width,
-                      padding: const EdgeInsets.all(16),
-                      margin: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: AppTheme.boxDecoration(),
-                      child: Text(
-                        widget.purpose == 'buy_coin'
-                            ? "Buy Coins"
-                            : widget.purpose == 'investment'
-                                ? "Investment Deposit"
-                                : widget.purpose ?? "",
-                        style: AppTheme.textStyleRegular,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                    // USDT Transfer Tab
+                    _buildUsdtTransferTab(width),
                   ],
-
-                  Text("Total Payment Amount", style: AppTheme.textStyleBold),
-                  Container(
-                    width: width,
-                    padding: const EdgeInsets.all(16),
-                    margin: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: AppTheme.boxDecoration(),
-                    child: Text(
-                        "LKR ${widget.totalAmount?.toStringAsFixed(2) ?? '0.00'}",
-                        style: AppTheme.textStyleLarge),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  const Text(
-                    "Upload Deposit Slip",
-                    style: TextStyle(color: Color(0x80FFFFFF), fontSize: 14),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Image picker container
-                  GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      height: 180,
-                      width: width,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: const Color.fromARGB(255, 172, 21, 177)
-                              .withOpacity(0.5),
-                          style: BorderStyle.solid,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: _selectedImage != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: Image.file(
-                                _selectedImage!,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.cloud_upload,
-                                      color: Colors.white, size: 40),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    "Click to upload deposit slip",
-                                    style: AppTheme.textStyleRegular,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "Supported: JPG, PNG, PDF",
-                                    style: AppTheme.textStyleSmall.copyWith(
-                                      color: Colors.grey,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                    ),
-                  ),
-
-                  // Error message
-                  if (_errorMessage != null)
-                    Container(
-                      width: width,
-                      margin: const EdgeInsets.only(top: 16),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _errorMessage!,
-                        style: const TextStyle(color: Colors.red),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-
-                  // Success message
-                  if (_successMessage != null)
-                    Container(
-                      width: width,
-                      margin: const EdgeInsets.only(top: 16),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _successMessage!,
-                        style: const TextStyle(color: Colors.green),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-
-                  // First time coin payment note
-                  if (widget.purpose == 'buy_coin' && !_isPayed)
-                    Container(
-                      width: width,
-                      margin: const EdgeInsets.only(top: 16),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            const Color(0xFF4776E6).withOpacity(0.2),
-                            const Color(0xFF8E54E9).withOpacity(0.2),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: const Color(0xFF8E54E9).withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: Colors.blue[300],
-                            size: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              "This is your first coin purchase. Upon successful payment, you'll gain access to investment features.",
-                              style: TextStyle(
-                                color: Colors.blue[100],
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  const SizedBox(height: 30),
-
-                  // Upload button
-                  Center(
-                    child: Container(
-                      width: width,
-                      decoration: AppTheme.buttonDecoration(),
-                      child: ElevatedButton(
-                        style: AppTheme.buttonStyle(),
-                        onPressed: _isLoading ? null : _submitDeposit,
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text(
-                                "Upload Slip",
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 18),
-                              ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Cancel button
-                  Center(
-                    child: Container(
-                      width: width,
-                      decoration: AppTheme.buttonDecoration(),
-                      child: ElevatedButton(
-                        style: AppTheme.buttonStyle().copyWith(
-                          backgroundColor:
-                              WidgetStateProperty.all(AppTheme.primaryColor),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(color: Colors.white, fontSize: 18),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ),
+                ),
         ],
       ),
       bottomNavigationBar: AppTheme.bottomNavigationBar(context, 1),
     );
   }
 
+  Widget _buildBankTransferTab(double width) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Bank Details Container
+            Container(
+              width: width,
+              decoration: AppTheme.boxDecoration(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDetailRow("Bank Name", firstBankDetail!.bankName),
+                  _buildDetailRow("Account Holder Name",
+                      firstBankDetail!.accountHolderName),
+                  _buildDetailRow(
+                      "Account Number", firstBankDetail!.accountNumber),
+                  _buildDetailRow("Branch Name", firstBankDetail!.branchName),
+                  _buildDetailRow(
+                      "Swift Code", firstBankDetail!.swiftCode ?? "N/A"),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // QR Code Container for Bank
+            Container(
+              width: width,
+              decoration: AppTheme.boxDecoration(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Text("Scan QR Code for Bank Transfer",
+                      style: AppTheme.textStyleBold,
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: bankQrCodeUrl != null
+                          ? Image.network(
+                              bankQrCodeUrl!,
+                              width: 200,
+                              height: 200,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 200,
+                                  height: 200,
+                                  color: Colors.grey[300],
+                                  child: const Center(
+                                    child: Icon(Icons.error,
+                                        color: Colors.red, size: 50),
+                                  ),
+                                );
+                              },
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(
+                                  width: 200,
+                                  height: 200,
+                                  color: Colors.white,
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      value:
+                                          loadingProgress.expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
+                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                          : Container(
+                              width: 200,
+                              height: 200,
+                              color: Colors.grey[300],
+                              child: const Center(
+                                child: Text("QR Code not available"),
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    "Scan to get bank details for transfer",
+                    style: AppTheme.textStyleSmall.copyWith(color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+
+            // Rest of your Bank Transfer tab content
+            _buildCommonPaymentDetails(width),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUsdtTransferTab(double width) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // USDT Details Container
+            Container(
+              width: width,
+              decoration: AppTheme.boxDecoration(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDetailRow("Account Holder Name", usdtHolderName),
+                  _buildDetailRow("USDT Network", "TRC20 (Tron)"),
+                  // You might want to add the wallet address if available
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // QR Code Container for USDT
+            Container(
+              width: width,
+              decoration: AppTheme.boxDecoration(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Text("Scan QR Code for USDT Transfer",
+                      style: AppTheme.textStyleBold,
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: usdtQrCodeUrl != null
+                          ? Image.network(
+                              usdtQrCodeUrl!,
+                              width: 200,
+                              height: 200,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 200,
+                                  height: 200,
+                                  color: Colors.grey[300],
+                                  child: const Center(
+                                    child: Icon(Icons.error,
+                                        color: Colors.red, size: 50),
+                                  ),
+                                );
+                              },
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(
+                                  width: 200,
+                                  height: 200,
+                                  color: Colors.white,
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      value:
+                                          loadingProgress.expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
+                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                          : Container(
+                              width: 200,
+                              height: 200,
+                              color: Colors.grey[300],
+                              child: const Center(
+                                child: Text("QR Code not available"),
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    "Scan to send USDT to our wallet",
+                    style: AppTheme.textStyleSmall.copyWith(color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded,
+                            color: Colors.orange[300], size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "Important: Only send USDT through TRC20 network to avoid loss of funds",
+                            style: TextStyle(
+                                color: Colors.orange[100], fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Rest of your USDT Transfer tab content
+            _buildCommonPaymentDetails(width),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Common payment details section to be used in both tabs
+  Widget _buildCommonPaymentDetails(double width) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+
+        // Display payment purpose
+        if (widget.purpose != null) ...[
+          Text("Payment Purpose", style: AppTheme.textStyleBold),
+          Container(
+            width: width,
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            decoration: AppTheme.boxDecoration(),
+            child: Text(
+              widget.purpose == 'buy_coin'
+                  ? "Buy Coins"
+                  : widget.purpose == 'investment'
+                      ? "Investment Deposit"
+                      : widget.purpose ?? "",
+              style: AppTheme.textStyleRegular,
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+
+        Text("Total Payment Amount", style: AppTheme.textStyleBold),
+        Container(
+          width: width,
+          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          decoration: AppTheme.boxDecoration(),
+          child: Text("LKR ${widget.totalAmount?.toStringAsFixed(2) ?? '0.00'}",
+              style: AppTheme.textStyleLarge),
+        ),
+
+        const SizedBox(height: 20),
+
+        const Text(
+          "Upload Deposit Slip",
+          style: TextStyle(color: Color(0x80FFFFFF), fontSize: 14),
+        ),
+        const SizedBox(height: 10),
+
+        // Image picker container
+        GestureDetector(
+          onTap: _pickImage,
+          child: Container(
+            height: 180,
+            width: width,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: const Color.fromARGB(255, 172, 21, 177).withOpacity(0.5),
+                style: BorderStyle.solid,
+                width: 1.5,
+              ),
+            ),
+            child: _selectedImage != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.file(
+                      _selectedImage!,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.cloud_upload,
+                            color: Colors.white, size: 40),
+                        const SizedBox(height: 12),
+                        Text(
+                          "Click to upload deposit slip",
+                          style: AppTheme.textStyleRegular,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Supported: JPG, PNG, PDF",
+                          style: AppTheme.textStyleSmall.copyWith(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ),
+
+        // Error message
+        if (_errorMessage != null)
+          Container(
+            width: width,
+            margin: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              _errorMessage!,
+              style: const TextStyle(color: Colors.red),
+              textAlign: TextAlign.center,
+            ),
+          ),
+
+        // Success message
+        if (_successMessage != null)
+          Container(
+            width: width,
+            margin: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              _successMessage!,
+              style: const TextStyle(color: Colors.green),
+              textAlign: TextAlign.center,
+            ),
+          ),
+
+        // First time coin payment note
+        if (widget.purpose == 'buy_coin' && !_isPayed)
+          Container(
+            width: width,
+            margin: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF4776E6).withOpacity(0.2),
+                  const Color(0xFF8E54E9).withOpacity(0.2),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFF8E54E9).withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: Colors.blue[300],
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "This is your first coin purchase. Upon successful payment, you'll gain access to investment features.",
+                    style: TextStyle(
+                      color: Colors.blue[100],
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        const SizedBox(height: 30),
+
+        // Upload button
+        Center(
+          child: Container(
+            width: width,
+            decoration: AppTheme.buttonDecoration(),
+            child: ElevatedButton(
+              style: AppTheme.buttonStyle(),
+              onPressed: _isLoading ? null : _submitDeposit,
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      "Upload Slip",
+                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Cancel button
+        Center(
+          child: Container(
+            width: width,
+            decoration: AppTheme.buttonDecoration(),
+            child: ElevatedButton(
+              style: AppTheme.buttonStyle().copyWith(
+                backgroundColor: WidgetStateProperty.all(AppTheme.primaryColor),
+              ),
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
   Widget _buildDetailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: AppTheme.textStyleBold),
           Text(value, style: AppTheme.textStyleRegular),
@@ -592,38 +894,3 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen> {
     );
   }
 }
-
-// Add this method to your UserApiService class
-/*
-Future<Map<String, dynamic>> updatePaymentStatus(int userId, bool isPayed) async {
-  try {
-    final response = await http.patch(
-      Uri.parse('$baseUrl/api/users/$userId/payment-status'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'is_payed': isPayed,
-      }),
-    );
-
-    final responseData = jsonDecode(response.body);
-
-    if (response.statusCode == 200) {
-      return {
-        'success': true,
-        'message': responseData['message'] ?? 'Payment status updated successfully',
-      };
-    } else {
-      return {
-        'success': false,
-        'message': responseData['message'] ?? 'Failed to update payment status',
-      };
-    }
-  } catch (e) {
-    print('Network error updating payment status: ${e.toString()}');
-    return {
-      'success': false,
-      'message': 'Network error: ${e.toString()}',
-    };
-  }
-}
-*/

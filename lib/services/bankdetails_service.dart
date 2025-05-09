@@ -9,7 +9,7 @@ class BankDetails {
   final String branchName;
   final String? swiftCode;
   final String? description;
-  final bool isActive;
+  final int isActive;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? createdByName;
@@ -37,7 +37,7 @@ class BankDetails {
       branchName: json['branchName'] ?? '',
       swiftCode: json['swiftCode'],
       description: json['description'],
-      isActive: json['isActive'] ?? true,
+      isActive: json['isActive'] ?? 1,
       createdAt:
           json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
       updatedAt:
@@ -56,9 +56,9 @@ class BankDetailsService {
   Future<Map<String, dynamic>> getActiveBankDetails() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/bank-details/active'),
+        Uri.parse('$baseUrl/api/admin/bank-details'),
       );
-
+      print('Response: ${response.body} @ ${response.statusCode}');
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
 

@@ -995,7 +995,7 @@ class _HomeScreenState extends State<HomeScreen>
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         const Text(
-          'T E T H E R',
+          'T E C WALLET',
           style: TextStyle(
             color: Colors.white,
             fontSize: 18,
