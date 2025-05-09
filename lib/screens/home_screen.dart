@@ -1261,6 +1261,7 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Row(
           // mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
