@@ -446,7 +446,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildIncomeLimitMessage() {
     // Compare total income with investment wallet amount
-    double maxIncomeLimit = _totalDepositAmount * 3;
+    double maxIncomeLimit = (_totalDepositAmount / 1.1) * 3;
     bool hasReachedMaxLimit = _totalIncome >= maxIncomeLimit;
 
     // Calculate remaining earnings allowed
@@ -977,7 +977,7 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       child: Center(
         child: Text(
-          'Coin Rate 1 Coin = LKR ${_coinValue.toStringAsFixed(2)}',
+          'Today TEC 1 Coin = LKR ${_coinValue.toStringAsFixed(2)}',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -1534,7 +1534,7 @@ class _HomeScreenState extends State<HomeScreen>
                                           MainAxisAlignment.center,
                                       children: [
                                         const Text(
-                                          'Your Total Income',
+                                          'Your Total Gain',
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontSize: 20,
@@ -1653,7 +1653,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                   children: [
                                                     const Text(
                                                       //7135184230
-                                                      'Investment Profit',
+                                                      'Investment Gain',
                                                       style: TextStyle(
                                                         color: Colors.white,
                                                         fontSize: 14,
@@ -1713,7 +1713,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                       MainAxisAlignment.center,
                                                   children: [
                                                     const Text(
-                                                      'Referral Gain',
+                                                      'Invite and Earn',
                                                       style: TextStyle(
                                                         color: Colors.white,
                                                         fontSize: 14,
@@ -2150,7 +2150,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     )
                   : Text(
-                      'LKR ${_totalDepositAmount.toStringAsFixed(2)}',
+                      'LKR ${(_totalDepositAmount / 1.1).toStringAsFixed(2)}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
@@ -2385,7 +2385,7 @@ class _HomeScreenState extends State<HomeScreen>
                       Expanded(
                         flex: 2,
                         child: Text(
-                          'LKR ${deposit.amount.toStringAsFixed(2)}',
+                          'LKR ${(deposit.amount / 1.1).toStringAsFixed(2)}',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.8),
                             fontSize: 14,
@@ -2443,7 +2443,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                     Text(
-                      'LKR ${_totalInvestmentDeposits.toStringAsFixed(2)}',
+                      'LKR ${(_totalInvestmentDeposits / 1.1).toStringAsFixed(2)}',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -2466,7 +2466,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                     Text(
-                      'LKR ${_totalCoinDeposits.toStringAsFixed(2)}',
+                      'LKR ${(_totalCoinDeposits / 1.1).toStringAsFixed(2)}',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -2488,7 +2488,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                     Text(
-                      'LKR ${_totalDepositAmount.toStringAsFixed(2)}',
+                      'LKR ${(_totalDepositAmount / 1.1).toStringAsFixed(2)}',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 14,
