@@ -86,6 +86,8 @@ class _HomeScreenState extends State<HomeScreen>
   double withdrawalAmount = 0.0;
   int _totalReferralsCount = 0;
 
+  String? profileImageUrl;
+
   // Services
   final UserApiService _userApiService = UserApiService(
     baseUrl: 'http://151.106.125.212:5021',
@@ -153,6 +155,18 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startAutoScrolling();
     });
+  }
+
+  Future<void> fetchProfileImage() async {
+    final userId = await UserApiService.getUserId();
+
+    if (userId != null) {
+      final imageUrl = await _userApiService.getProfileImageUrl(userId);
+      setState(() {
+        profileImageUrl = imageUrl;
+        print('image url ${'http://151.106.125.212:5021'}/uploads/$imageUrl');
+      });
+    }
   }
 
 // Example usage in a Flutter widget
@@ -290,6 +304,7 @@ class _HomeScreenState extends State<HomeScreen>
       await _loadTodayProfit();
       await _loadUserDeposits();
       await _fetchUserTotalWithdrawals();
+      await fetchProfileImage();
 
       _calculateTotalIncome();
 
@@ -514,8 +529,8 @@ class _HomeScreenState extends State<HomeScreen>
                     Colors.redAccent.withOpacity(0.5)
                   ]
                 : [
-                    Colors.green.withOpacity(0.7),
-                    Colors.lightGreen.withOpacity(0.5)
+                    Colors.black.withOpacity(0.3),
+                    Colors.black.withOpacity(0.3),
                   ],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
@@ -662,8 +677,8 @@ class _HomeScreenState extends State<HomeScreen>
                     Colors.grey.withOpacity(0.5),
                   ]
                 : [
-                    Colors.green.withOpacity(0.8),
-                    Colors.green.withOpacity(0.6),
+                    Colors.black.withOpacity(0.3),
+                    Colors.black.withOpacity(0.3),
                   ],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
@@ -690,7 +705,7 @@ class _HomeScreenState extends State<HomeScreen>
                         hasReachedMaxLimit
                             ? Icons.warning_amber
                             : Icons.monetization_on,
-                        color: Colors.white,
+                        color: Colors.green,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
@@ -1149,14 +1164,18 @@ class _HomeScreenState extends State<HomeScreen>
               onTap: () {
                 // Navigate to profile screen
               },
-              child: CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.purple.withOpacity(0.5),
-                child: const Icon(
-                  Icons.person,
-                  color: Colors.white,
-                ),
-              ),
+              child: profileImageUrl != null
+                  ? CircleAvatar(
+                      radius: 20,
+                      backgroundImage: NetworkImage(profileImageUrl!))
+                  : CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.purple.withOpacity(0.5),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                      ),
+                    ),
             ),
             SizedBox(
               width: 10,
@@ -1396,7 +1415,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                     ),
                                                     const SizedBox(height: 2),
                                                     Text(
-                                                      '\$${_investmentProfit.toStringAsFixed(2)}',
+                                                      'LKR${_investmentProfit.toStringAsFixed(2)}',
                                                       style: const TextStyle(
                                                         color: Colors.white,
                                                         fontWeight:
@@ -1481,7 +1500,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                     ),
                                                     const SizedBox(height: 2),
                                                     Text(
-                                                      '\$${_referralIncome.toStringAsFixed(2)}',
+                                                      'LKR${_referralIncome.toStringAsFixed(2)}',
                                                       style: const TextStyle(
                                                         color: Colors.white,
                                                         fontWeight:

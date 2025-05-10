@@ -4,6 +4,7 @@ import 'package:investment_plan_app/widgets/AppTheme.dart';
 import 'package:investment_plan_app/screens/BankDetailsScreen.dart';
 
 import '../services/coin_service.dart';
+import '../services/user_service.dart';
 
 class DepositFundScreen extends StatefulWidget {
   final String? depositType;
@@ -26,7 +27,12 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
   bool _isLoadingCoinValue = true;
   double coinBalance = 0;
 
+  String? profileImageUrl;
+
   final CoinService _coinService = CoinService(
+    baseUrl: 'http://151.106.125.212:5021',
+  );
+  final UserApiService _userApiService = UserApiService(
     baseUrl: 'http://151.106.125.212:5021',
   );
 
@@ -34,6 +40,7 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
   void initState() {
     super.initState();
     _getCoinValue();
+    fetchProfileImage();
     // Set amount constraints based on deposit type
     if (widget.depositType == 'investment') {
       _minAmount = 10000;
@@ -42,6 +49,18 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
       // Default to 'buy_coin' constraints
       _minAmount = 5000;
       _maxAmount = 1000000;
+    }
+  }
+
+  Future<void> fetchProfileImage() async {
+    final userId = await UserApiService.getUserId();
+    //String? profileImageUrl;
+    if (userId != null) {
+      final imageUrl = await _userApiService.getProfileImageUrl(userId);
+      setState(() {
+        profileImageUrl = imageUrl;
+        print('image url $imageUrl');
+      });
     }
   }
 
@@ -74,12 +93,12 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
       if (amount < _minAmount) {
         setState(() {
           _errorMessage =
-              'Minimum deposit amount is \$${_minAmount.toStringAsFixed(0)}';
+              'Minimum deposit amount is LKR${_minAmount.toStringAsFixed(0)}';
         });
       } else if (amount > _maxAmount) {
         setState(() {
           _errorMessage =
-              'Maximum deposit amount is \$${_maxAmount.toStringAsFixed(0)}';
+              'Maximum deposit amount is LKR${_maxAmount.toStringAsFixed(0)}';
         });
       }
     }
@@ -176,13 +195,19 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
         ),
         title: Text('Deposit Funds', style: AppTheme.textStyleLarge),
         centerTitle: true,
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.all(8.0),
-            child: CircleAvatar(
-              backgroundImage: AssetImage('assets/user.png'),
-            ),
-          ),
+              padding: const EdgeInsets.all(8.0),
+              child: profileImageUrl != null
+                  ? CircleAvatar(
+                      backgroundImage: NetworkImage('$profileImageUrl'),
+                    )
+                  : const CircleAvatar(
+                      child: Icon(
+                        Icons.person,
+                        color: Colors.white,
+                      ),
+                    )),
         ],
       ),
       body: Stack(
@@ -243,7 +268,7 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Deposit amount must be between \$${_minAmount.toStringAsFixed(0)} and \$${_maxAmount.toStringAsFixed(0)}',
+                            'Deposit amount must be between LKR${_minAmount.toStringAsFixed(0)} and LKR${_maxAmount.toStringAsFixed(0)}',
                             style: TextStyle(
                               color: Colors.blue[100],
                               fontSize: 14,
@@ -284,7 +309,7 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
                                 borderSide: BorderSide.none,
                               ),
                               prefixIcon: const Icon(
-                                Icons.attach_money,
+                                Icons.money,
                                 color: Colors.white60,
                               ),
                             ),
@@ -333,7 +358,7 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
                           children: [
                             Text('Amount', style: AppTheme.textStyleBold),
                             Text(
-                                '\$${_amountController.text.isEmpty ? "0.00" : double.parse(_amountController.text).toStringAsFixed(2)}',
+                                'LKR${_amountController.text.isEmpty ? "0.00" : double.parse(_amountController.text).toStringAsFixed(2)}',
                                 style: AppTheme.textStyleBold),
                           ],
                         ),
@@ -342,7 +367,7 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
                           children: [
                             Text('Service Fee (10%)',
                                 style: AppTheme.textStyleSmall),
-                            Text('\$${serviceFee.toStringAsFixed(2)}',
+                            Text('LKR${serviceFee.toStringAsFixed(2)}',
                                 style: AppTheme.textStyleSmall),
                           ],
                         ),
@@ -351,7 +376,7 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text('Total Amount', style: AppTheme.textStyleBold),
-                            Text('\$${totalAmount.toStringAsFixed(2)}',
+                            Text('LKR${totalAmount.toStringAsFixed(2)}',
                                 style: AppTheme.textStyleBold),
                           ],
                         ),
@@ -378,7 +403,7 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
                         if (amount < _minAmount) {
                           _showCustomSnackBar(
                               context,
-                              'Minimum deposit amount is \$${_minAmount.toStringAsFixed(0)}',
+                              'Minimum deposit amount is LKR${_minAmount.toStringAsFixed(0)}',
                               false);
                           return;
                         }
@@ -386,7 +411,7 @@ class _DepositFundScreenState extends State<DepositFundScreen> {
                         if (amount > _maxAmount) {
                           _showCustomSnackBar(
                               context,
-                              'Maximum deposit amount is \$${_maxAmount.toStringAsFixed(0)}',
+                              'Maximum deposit amount is LKR${_maxAmount.toStringAsFixed(0)}',
                               false);
                           return;
                         }

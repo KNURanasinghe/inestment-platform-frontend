@@ -10,6 +10,8 @@ class BankDetails {
   final String? swiftCode;
   final String? description;
   final int isActive;
+  final String? usdtQrPath;
+  final String? lankapayQrPath;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? createdByName;
@@ -23,6 +25,8 @@ class BankDetails {
     this.swiftCode,
     this.description,
     required this.isActive,
+    this.usdtQrPath,
+    this.lankapayQrPath,
     this.createdAt,
     this.updatedAt,
     this.createdByName,
@@ -38,6 +42,8 @@ class BankDetails {
       swiftCode: json['swiftCode'],
       description: json['description'],
       isActive: json['isActive'] ?? 1,
+      usdtQrPath: json['usdtQrPath'],
+      lankapayQrPath: json['lankapayQrPath'],
       createdAt:
           json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
       updatedAt:

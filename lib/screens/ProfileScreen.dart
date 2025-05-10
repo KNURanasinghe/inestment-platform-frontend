@@ -1,8 +1,10 @@
 // ignore_for_file: unused_import, unused_element
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:investment_plan_app/screens/LoginScreen.dart';
 import 'package:investment_plan_app/screens/kyc_verification_dialog.dart';
 import 'package:investment_plan_app/screens/pin_entry_page.dart';
@@ -31,10 +33,69 @@ class _AccountPageState extends State<AccountPage> {
   bool isKycVerified = false;
   String refcode = '';
   int userid = 0;
+
+  String? profileImageUrl;
+  final UserApiService _userApiService = UserApiService(
+      baseUrl:
+          'http://151.106.125.212:5021'); // Replace with your actual base URL
+  bool isUploading = false;
+
   @override
   void initState() {
     super.initState();
     fetchKYCStatus();
+    fetchProfileImage();
+  }
+
+  Future<void> fetchProfileImage() async {
+    final userId = await UserApiService.getUserId();
+
+    if (userId != null) {
+      final imageUrl = await _userApiService.getProfileImageUrl(userId);
+      setState(() {
+        profileImageUrl = imageUrl;
+        print('image url ${'http://151.106.125.212:5021'}/uploads/$imageUrl');
+      });
+    }
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    try {
+      setState(() {
+        isUploading = true;
+      });
+
+      // Use image_picker package to pick image
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedFile =
+          await picker.pickImage(source: ImageSource.gallery);
+
+      if (pickedFile != null) {
+        File imageFile = File(pickedFile.path);
+        final userId = await UserApiService.getUserId();
+
+        if (userId != null) {
+          final response =
+              await _userApiService.uploadProfileImage(userId, imageFile);
+
+          if (response['success']) {
+            _showCustomSnackBar(
+                context, "Profile image updated successfully", true);
+            fetchProfileImage(); // Refresh the profile image
+          } else {
+            _showCustomSnackBar(context,
+                response['message'] ?? "Failed to update profile image", false);
+          }
+        }
+      }
+    } catch (e) {
+      _showCustomSnackBar(
+          context, "Error uploading image: ${e.toString()}", false);
+    } finally {
+      setState(() {
+        isUploading = false;
+      });
+    }
   }
 
   Future<void> fetchKYCStatus() async {
@@ -283,9 +344,45 @@ class _AccountPageState extends State<AccountPage> {
     return Container(
       child: Row(
         children: [
-          const CircleAvatar(
-            radius: 30,
-            backgroundImage: NetworkImage("https://via.placeholder.com/150"),
+          GestureDetector(
+            onTap: _pickAndUploadImage,
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: Colors.grey[800],
+                  backgroundImage: profileImageUrl != null
+                      ? NetworkImage("$profileImageUrl")
+                      : const NetworkImage(
+                          "https://images.pexels.com/photos/1704488/pexels-photo-1704488.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500"),
+                  child: isUploading
+                      ? const CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                          strokeWidth: 2.0,
+                        )
+                      : null,
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                      border:
+                          Border.all(color: AppTheme.backgroundColor, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.edit,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: 16),
           Column(

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:investment_plan_app/screens/DepositScreen.dart';
 import 'package:investment_plan_app/screens/home_screen.dart';
+import 'package:investment_plan_app/services/usdt_service.dart';
 import 'package:investment_plan_app/services/user_service.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
 import 'package:investment_plan_app/services/deposit_service.dart';
@@ -37,6 +38,10 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
     baseUrl: 'http://151.106.125.212:5021',
   );
 
+  final UsdtRateService _usdtService = UsdtRateService(
+    baseUrl: 'http://151.106.125.212:5021',
+  );
+
   late TabController _tabController;
   File? _selectedImage;
   bool _isLoading = false;
@@ -52,13 +57,21 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
   // Assume USDT wallet holder name comes from the same bank details
   String usdtHolderName = "T.E.C Dynamic Works (Pvt) Ltd";
 
+  String? profileImageUrl;
+  double? buyRate;
+  double? sellRate;
+  DateTime? lastUpdated;
+  bool isRateLoading = true;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _getBankDetails();
     _loadUserData();
-    _getQrCodes();
+
+    fetchProfileImage();
+    _fetchUsdtRate();
   }
 
   @override
@@ -67,28 +80,49 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
     super.dispose();
   }
 
-  // Add method to get QR codes from your database
-  Future<void> _getQrCodes() async {
+  Future<void> _fetchUsdtRate() async {
     try {
-      // This is a placeholder. Replace with your actual API call
-      // For example:
-      // final qrResponse = await _bankDetailsService.getQrCodes();
-      // if (qrResponse['success']) {
-      //   setState(() {
-      //     bankQrCodeUrl = qrResponse['bankQrUrl'];
-      //     usdtQrCodeUrl = qrResponse['usdtQrUrl'];
-      //   });
-      // }
-
-      // For now, let's assume these are the URLs (replace with your actual API endpoints)
       setState(() {
-        bankQrCodeUrl = 'http://151.106.125.212:5021/api/qrcodes/bank_qr.png';
-        usdtQrCodeUrl = 'http://151.106.125.212:5021/api/qrcodes/usdt_qr.png';
+        isRateLoading = true;
       });
+
+      final response = await _usdtService.getCurrentRate();
+
+      if (response['success']) {
+        setState(() {
+          buyRate = response['rate'].buyRate;
+          sellRate = response['rate'].sellRate;
+          lastUpdated = response['rate'].updatedAt;
+          isRateLoading = false;
+        });
+        print('USDT Rate loaded: Buy: $buyRate, Sell: $sellRate');
+      } else {
+        setState(() {
+          isRateLoading = false;
+        });
+        print('Error loading USDT rate: ${response['message']}');
+      }
     } catch (e) {
-      print('Error getting QR codes: $e');
+      setState(() {
+        isRateLoading = false;
+      });
+      print('Error fetching USDT rate: $e');
     }
   }
+
+  Future<void> fetchProfileImage() async {
+    final userId = await UserApiService.getUserId();
+    //String? profileImageUrl;
+    if (userId != null) {
+      final imageUrl = await _userApiService.getProfileImageUrl(userId);
+      setState(() {
+        profileImageUrl = imageUrl;
+        print('image url $imageUrl');
+      });
+    }
+  }
+
+  // Add method to get QR codes from your database
 
   Future<void> _loadUserData() async {
     try {
@@ -133,9 +167,12 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
           // Access the first bank detail
           setState(() {
             firstBankDetail = bankDetailsList[0];
+            bankQrCodeUrl = firstBankDetail!.lankapayQrPath;
+            usdtQrCodeUrl = firstBankDetail!.usdtQrPath;
           });
           print('Bank details loaded successfully. ID: ${firstBankDetail!.id}');
 
+          print('qr codes $bankQrCodeUrl $usdtQrCodeUrl');
           // You can now access other properties of the first bank detail
           print('Bank Name: ${firstBankDetail!.bankName}');
           print('Account Holder: ${firstBankDetail!.accountHolderName}');
@@ -369,13 +406,19 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
         ),
         title: Text("Payment Details", style: AppTheme.textStyleLarge),
         centerTitle: true,
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.all(8.0),
-            child: CircleAvatar(
-              backgroundImage: AssetImage('assets/user.png'),
-            ),
-          ),
+              padding: const EdgeInsets.all(8.0),
+              child: profileImageUrl != null
+                  ? CircleAvatar(
+                      backgroundImage: NetworkImage('$profileImageUrl'),
+                    )
+                  : const CircleAvatar(
+                      child: Icon(
+                        Icons.person,
+                        color: Colors.white,
+                      ),
+                    )),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -463,7 +506,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
                       ),
                       child: bankQrCodeUrl != null
                           ? Image.network(
-                              bankQrCodeUrl!,
+                              'http://151.106.125.212:5021$bankQrCodeUrl',
                               width: 200,
                               height: 200,
                               fit: BoxFit.contain,
@@ -572,7 +615,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
                       ),
                       child: usdtQrCodeUrl != null
                           ? Image.network(
-                              usdtQrCodeUrl!,
+                              'http://151.106.125.212:5021$usdtQrCodeUrl',
                               width: 200,
                               height: 200,
                               fit: BoxFit.contain,

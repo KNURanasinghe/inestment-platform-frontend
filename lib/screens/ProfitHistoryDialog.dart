@@ -187,7 +187,7 @@ class _ProfitHistoryDialogState extends State<ProfitHistoryDialog>
       );
     }
 
-    final formatter = NumberFormat.currency(symbol: '\$');
+    final formatter = NumberFormat.currency(symbol: 'LKR');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -341,7 +341,7 @@ class _ProfitHistoryDialogState extends State<ProfitHistoryDialog>
     required bool isUnclaimed,
     String? claimedAt,
   }) {
-    final formatter = NumberFormat.currency(symbol: '\$');
+    final formatter = NumberFormat.currency(symbol: 'LKR');
 
     String formattedDateTime;
     if (isUnclaimed) {

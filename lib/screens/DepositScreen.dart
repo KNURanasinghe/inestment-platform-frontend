@@ -32,6 +32,19 @@ class _DepositScreenState extends State<DepositScreen> {
   int _userId = 0;
   bool _isPayed = false; // User payment status
   String? _selectedCardType; // To track which card is selected
+  String? profileImageUrl;
+
+  Future<void> fetchProfileImage() async {
+    final userId = await UserApiService.getUserId();
+    //String? profileImageUrl;
+    if (userId != null) {
+      final imageUrl = await _userApiService.getProfileImageUrl(userId);
+      setState(() {
+        profileImageUrl = imageUrl;
+        print('image url ${'http://151.106.125.212:5021'}/uploads/$imageUrl');
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -67,6 +80,7 @@ class _DepositScreenState extends State<DepositScreen> {
 
         // Load pending deposits
         await _loadPendingDeposits();
+        await fetchProfileImage();
       } else {
         setState(() {
           _isLoading = false;
@@ -246,11 +260,16 @@ class _DepositScreenState extends State<DepositScreen> {
             icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _loadUserData,
           ),
-          const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: CircleAvatar(
-              backgroundImage: AssetImage('assets/user.png'),
-            ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: profileImageUrl != null
+                ? CircleAvatar(
+                    backgroundImage: NetworkImage('$profileImageUrl'),
+                  )
+                : const CircleAvatar(
+                    backgroundColor: Colors.grey,
+                    child: Icon(Icons.person, color: Colors.white),
+                  ),
           ),
         ],
       ),
@@ -290,7 +309,7 @@ class _DepositScreenState extends State<DepositScreen> {
                                 style: AppTheme.textStyleBold),
                             const SizedBox(height: 8),
                             Text(
-                                '\$${(_totalPendingAmount / 1.1).toStringAsFixed(2)}',
+                                'LKR${(_totalPendingAmount / 1.1).toStringAsFixed(2)}',
                                 style: AppTheme.textStyleLarge),
                           ],
                         ),
@@ -589,7 +608,7 @@ class _DepositScreenState extends State<DepositScreen> {
                                                             .start,
                                                     children: [
                                                       Text(
-                                                          '\$${(deposit.amount / 1.1).toStringAsFixed(2)}',
+                                                          'LKR${(deposit.amount / 1.1).toStringAsFixed(2)}',
                                                           style: AppTheme
                                                               .textStyleBold),
                                                       Text(

@@ -1,6 +1,8 @@
 // ignore_for_file: unused_import, unused_field
 
 import 'package:flutter/material.dart';
+import 'package:investment_plan_app/screens/WithdrawScreen.dart';
+import 'package:investment_plan_app/screens/home_screen.dart';
 import 'package:investment_plan_app/services/user_service.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
 import 'package:investment_plan_app/services/withdrawal_service.dart';
@@ -18,6 +20,9 @@ class _PendingWithdrawalsPageState extends State<PendingWithdrawalsPage> {
   final WithdrawalService _withdrawalService = WithdrawalService(
     baseUrl: 'http://151.106.125.212:5021', // Update with your server URL
   );
+  final UserApiService _userApiService = UserApiService(
+    baseUrl: 'http://151.106.125.212:5021',
+  );
 
   List<Withdrawal>? _pendingWithdrawals;
   double _totalPendingAmount = 0.0;
@@ -27,10 +32,24 @@ class _PendingWithdrawalsPageState extends State<PendingWithdrawalsPage> {
   String _filterType = "All"; // Default filter
   String _sortBy = "Date"; // Default sort
 
+  String? profileImageUrl;
+
   @override
   void initState() {
     super.initState();
     _loadPendingWithdrawals();
+  }
+
+  Future<void> fetchProfileImage() async {
+    final userId = await UserApiService.getUserId();
+    //String? profileImageUrl;
+    if (userId != null) {
+      final imageUrl = await _userApiService.getProfileImageUrl(userId);
+      setState(() {
+        profileImageUrl = imageUrl;
+        print('image url $imageUrl');
+      });
+    }
   }
 
   Future<void> _loadPendingWithdrawals() async {
@@ -46,18 +65,23 @@ class _PendingWithdrawalsPageState extends State<PendingWithdrawalsPage> {
         _userId = userid;
       }
 
-      // Get all pending withdrawals - for admin view
-      final withdrawals = await _withdrawalService.getUserWithdrawals(userid!);
+      // Get all withdrawals for the user
+      final allWithdrawals =
+          await _withdrawalService.getUserWithdrawals(userid!);
 
-      // Calculate total pending amount
-      double total = 0.0;
-      for (var withdrawal in withdrawals) {
-        total += withdrawal.amount;
+      // Filter to get only pending withdrawals (isPending == true)
+      final pendingWithdrawals =
+          allWithdrawals.where((withdrawal) => withdrawal.isPending).toList();
+
+      // Calculate total pending amount from filtered list
+      double totalPending = 0.0;
+      for (var withdrawal in pendingWithdrawals) {
+        totalPending += withdrawal.amount;
       }
 
       setState(() {
-        _pendingWithdrawals = withdrawals;
-        _totalPendingAmount = total;
+        _pendingWithdrawals = pendingWithdrawals;
+        _totalPendingAmount = totalPending;
         _isLoading = false;
       });
     } catch (e) {
@@ -95,7 +119,8 @@ class _PendingWithdrawalsPageState extends State<PendingWithdrawalsPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () {
-            Navigator.pop(context);
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const HomeScreen()));
           },
         ),
         title: const Text(
@@ -108,11 +133,18 @@ class _PendingWithdrawalsPageState extends State<PendingWithdrawalsPage> {
             icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _loadPendingWithdrawals,
           ),
-          const Padding(
-            padding: EdgeInsets.only(right: 15),
-            child: CircleAvatar(
-              backgroundImage: AssetImage('assets/profile.jpg'),
-            ),
+          Padding(
+            padding: const EdgeInsets.only(right: 15),
+            child: profileImageUrl != null
+                ? CircleAvatar(
+                    backgroundImage: NetworkImage('$profileImageUrl'),
+                  )
+                : const CircleAvatar(
+                    child: Icon(
+                      Icons.person,
+                      color: Colors.white,
+                    ),
+                  ),
           ),
         ],
       ),
@@ -346,70 +378,70 @@ class _PendingWithdrawalsPageState extends State<PendingWithdrawalsPage> {
                           ),
                           const SizedBox(height: 10),
                           // Process All Withdrawals Button
-                          GestureDetector(
-                            onTap: () async {
-                              try {
-                                setState(() {
-                                  _isLoading = true;
-                                });
+                          // GestureDetector(
+                          //   onTap: () async {
+                          //     try {
+                          //       setState(() {
+                          //         _isLoading = true;
+                          //       });
 
-                                // Process all pending withdrawals
-                                if (_pendingWithdrawals != null) {
-                                  for (var withdrawal in _pendingWithdrawals!) {
-                                    if (withdrawal.id != null) {
-                                      await _withdrawalService
-                                          .updateWithdrawalStatus(
-                                        withdrawal.id!,
-                                        false, // set isPending to false (approve)
-                                      );
-                                    }
-                                  }
-                                }
+                          //       // Process all pending withdrawals
+                          //       if (_pendingWithdrawals != null) {
+                          //         for (var withdrawal in _pendingWithdrawals!) {
+                          //           if (withdrawal.id != null) {
+                          //             await _withdrawalService
+                          //                 .updateWithdrawalStatus(
+                          //               withdrawal.id!,
+                          //               false, // set isPending to false (approve)
+                          //             );
+                          //           }
+                          //         }
+                          //       }
 
-                                // Reload the data
-                                await _loadPendingWithdrawals();
+                          //       // Reload the data
+                          //       await _loadPendingWithdrawals();
 
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'All withdrawals processed successfully'),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              } catch (e) {
-                                setState(() {
-                                  _isLoading = false;
-                                  _errorMessage = 'Error: ${e.toString()}';
-                                });
-                              }
-                            },
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 15),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFF00CCF1),
-                                    Color(0xFF8200DB)
-                                  ],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  "Process All Withdrawals",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
+                          //       if (!mounted) return;
+                          //       ScaffoldMessenger.of(context).showSnackBar(
+                          //         const SnackBar(
+                          //           content: Text(
+                          //               'All withdrawals processed successfully'),
+                          //           backgroundColor: Colors.green,
+                          //         ),
+                          //       );
+                          //     } catch (e) {
+                          //       setState(() {
+                          //         _isLoading = false;
+                          //         _errorMessage = 'Error: ${e.toString()}';
+                          //       });
+                          //     }
+                          //   },
+                          //   child: Container(
+                          //     width: double.infinity,
+                          //     padding: const EdgeInsets.symmetric(vertical: 15),
+                          //     decoration: BoxDecoration(
+                          //       gradient: const LinearGradient(
+                          //         colors: [
+                          //           Color(0xFF00CCF1),
+                          //           Color(0xFF8200DB)
+                          //         ],
+                          //         begin: Alignment.centerLeft,
+                          //         end: Alignment.centerRight,
+                          //       ),
+                          //       borderRadius: BorderRadius.circular(12),
+                          //     ),
+                          //     child: const Center(
+                          //       child: Text(
+                          //         "Process All Withdrawals",
+                          //         style: TextStyle(
+                          //           color: Colors.white,
+                          //           fontSize: 18,
+                          //         ),
+                          //       ),
+                          //     ),
+                          //   ),
+                          // ),
+                          // const SizedBox(height: 20),
                         ],
                       ),
                     ),

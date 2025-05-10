@@ -525,4 +525,91 @@ class UserApiService {
       return false;
     }
   }
+
+  // Add this to your UserApiService class in user_service.dart
+  Future<Map<String, dynamic>> uploadProfileImage(
+      int userId, File imageFile) async {
+    try {
+      // Create a multipart request
+      final url = Uri.parse('$baseUrl/api/users/$userId/profile-image');
+      final request = http.MultipartRequest('POST', url);
+
+      // Get file extension
+      final fileExtension = path.extension(imageFile.path).toLowerCase();
+      String contentType;
+
+      switch (fileExtension) {
+        case '.jpg':
+        case '.jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case '.png':
+          contentType = 'image/png';
+          break;
+        default:
+          contentType = 'image/jpeg'; // Default to jpeg
+      }
+
+      // Add file to request
+      final multipartFile = await http.MultipartFile.fromPath(
+        'image',
+        imageFile.path,
+        contentType: MediaType.parse(contentType),
+      );
+
+      request.files.add(multipartFile);
+
+      // Send the request
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw TimeoutException('Connection timed out');
+        },
+      );
+
+      // Get the response
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Profile image uploaded successfully',
+          'imagePath': data['imagePath']
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to upload image: ${response.body}',
+        };
+      }
+    } catch (e) {
+      print('Error uploading profile image: ${e.toString()}');
+      return {
+        'success': false,
+        'message': 'Error: ${e.toString()}',
+      };
+    }
+  }
+
+// Add this method to get the profile image URL
+  Future<String?> getProfileImageUrl(int userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/users/$userId/profile'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print('profile response $data');
+        return data['user']['profileImageUrl'];
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching profile image: ${e.toString()}');
+      return null;
+    }
+  }
 }

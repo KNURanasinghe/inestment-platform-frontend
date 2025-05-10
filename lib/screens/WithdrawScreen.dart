@@ -4,6 +4,8 @@ import '../services/withdrawal_service.dart';
 import 'Bank_Account_Details.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
 
+import 'pending_withdrawals_page.dart';
+
 class WithdrawPage extends StatefulWidget {
   final double balance; // Add this parameter
 
@@ -20,6 +22,12 @@ class _WithdrawPageState extends State<WithdrawPage> {
   final TextEditingController amount = TextEditingController();
   double serviceFee = 0;
   double finalAmount = 0;
+
+  final UserApiService _userApiService = UserApiService(
+    baseUrl: 'http://151.106.125.212:5021',
+  );
+
+  String? profileImageUrl;
 
   // Create a custom SnackBar with gradient and proper styling
   void _showCustomSnackBar(
@@ -105,6 +113,7 @@ class _WithdrawPageState extends State<WithdrawPage> {
     super.initState();
     // Add listener to automatically update fee calculation when amount changes
     amount.addListener(_calculateFees);
+    fetchProfileImage();
   }
 
   @override
@@ -113,6 +122,18 @@ class _WithdrawPageState extends State<WithdrawPage> {
     amount.removeListener(_calculateFees);
     amount.dispose();
     super.dispose();
+  }
+
+  Future<void> fetchProfileImage() async {
+    final userId = await UserApiService.getUserId();
+    //String? profileImageUrl;
+    if (userId != null) {
+      final imageUrl = await _userApiService.getProfileImageUrl(userId);
+      setState(() {
+        profileImageUrl = imageUrl;
+        print('image url $imageUrl');
+      });
+    }
   }
 
   @override
@@ -129,11 +150,18 @@ class _WithdrawPageState extends State<WithdrawPage> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 30),
-                  const Align(
+                  Align(
                     alignment: Alignment.topRight,
-                    child: CircleAvatar(
-                      backgroundImage: AssetImage('assets/profile.jpg'),
-                    ),
+                    child: profileImageUrl != null
+                        ? CircleAvatar(
+                            backgroundImage: NetworkImage('$profileImageUrl'),
+                          )
+                        : const CircleAvatar(
+                            child: Icon(
+                              Icons.person,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                   const SizedBox(height: 30),
                   const Text(
@@ -150,7 +178,47 @@ class _WithdrawPageState extends State<WithdrawPage> {
                     ),
                   ),
                   const SizedBox(height: 40),
-
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const PendingWithdrawalsPage()));
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.blue.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Pending withdrawals',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios_outlined,
+                            color: Colors.blue[300],
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   // Information container
                   Container(
                     width: double.infinity,

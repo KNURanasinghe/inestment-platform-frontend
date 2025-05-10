@@ -259,7 +259,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   }
 
   Widget _buildBalanceSection() {
-    final formatter = NumberFormat.currency(symbol: '\$');
+    final formatter = NumberFormat.currency(symbol: 'LKR');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
