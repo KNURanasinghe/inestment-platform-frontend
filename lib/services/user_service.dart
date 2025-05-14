@@ -52,9 +52,15 @@ class UserApiService {
     String? address,
     String? country,
     String? refcode,
+    dynamic isVerified = false, // Accept either bool or int
   }) async {
     try {
-      print('refcode $refcode');
+      print('refcode $refcode, isVerified $isVerified');
+
+      // Ensure isVerified is sent as a number (0 or 1)
+      final verifiedValue =
+          isVerified is bool ? (isVerified ? 1 : 0) : isVerified;
+
       final response = await http.post(
         Uri.parse('$baseUrl/api/users/register'),
         headers: {'Content-Type': 'application/json'},
@@ -69,11 +75,13 @@ class UserApiService {
           'address': address,
           'country': country,
           'referrerCode': refcode,
+          'isVerified': verifiedValue, // Use the converted value
         }),
       );
 
       final responseData = jsonDecode(response.body);
       print('Response data: $responseData');
+
       if (response.statusCode == 201) {
         print('Registration successful: ${responseData['refCode']}');
         // Save user ID to shared preferences

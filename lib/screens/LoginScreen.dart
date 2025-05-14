@@ -189,14 +189,32 @@ class _LoginScreenState extends State<LoginScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.start,
                               children: [
-                                Checkbox(
-                                  value: rememberMe,
-                                  onChanged: (bool? value) {
+                                // Custom checkbox
+                                GestureDetector(
+                                  onTap: () {
                                     setState(() {
-                                      rememberMe = value!;
+                                      rememberMe = !rememberMe;
                                     });
                                   },
-                                  activeColor: Colors.white,
+                                  child: Container(
+                                    width: 20,
+                                    height: 20,
+                                    margin: const EdgeInsets.only(right: 8),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: Colors.white),
+                                      color: rememberMe
+                                          ? Colors.white.withOpacity(0.2)
+                                          : Colors.transparent,
+                                    ),
+                                    child: rememberMe
+                                        ? const Icon(
+                                            Icons.check,
+                                            size: 16,
+                                            color: Colors.green,
+                                          )
+                                        : null,
+                                  ),
                                 ),
                                 const Text(
                                   'Remember me',

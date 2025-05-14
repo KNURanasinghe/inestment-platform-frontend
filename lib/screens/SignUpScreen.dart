@@ -1,8 +1,10 @@
 // lib/screens/signup_screen.dart
 // ignore_for_file: unused_local_variable
 
+import 'dart:math';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import 'package:investment_plan_app/screens/WelcomeScreen.dart';
+import 'package:investment_plan_app/screens/otp_verification.dart';
 import 'package:investment_plan_app/services/user_service.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
@@ -38,6 +40,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final UserApiService _apiService = UserApiService(
     baseUrl: 'http://151.106.125.212:5021', // Your backend URL
   );
+// Format phone number for API
+  String formatPhoneNumber(String phoneNumber) {
+    // Remove spaces, dashes, etc.
+    String cleaned = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+
+    // If the number starts with 0, remove it (assuming Sri Lankan format)
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.substring(1);
+    }
+    cleaned = '+94$cleaned';
+    // Return international format
+    return cleaned;
+  }
+
+  // Generate OTP
+  String generateOTP() {
+    Random random = Random();
+    int otp = random.nextInt(900000) + 100000; // 4-digit code between 1000-9999
+    return otp.toString();
+  }
 
   // Custom SnackBar method
   void _showCustomSnackBar(
@@ -126,59 +148,102 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
+      final String formattedPhone =
+          formatPhoneNumber(_phoneController.text).toString();
       print('Attempting to register user with the following details:');
       print('Name: ${_nameController.text}');
       print('Email: ${_emailController.text}');
       print('NIC: ${_nicController.text}');
       print('Username: ${_usernameController.text}');
 
-      if (_deviceId == null) {
-        _showCustomSnackBar(
-            context, 'Device initialization failed. Please try again.', false);
-        return;
-      }
+      // Generate and send OTP
+      String otp = generateOTP();
+      String fullPhoneNumber = formatPhoneNumber(_phoneController.text);
 
-      final result = await _apiService.registerUser(
-          name: _nameController.text,
-          email: _emailController.text,
-          nicNumber: _nicController.text,
-          username: _usernameController.text,
-          password: _passwordController.text,
-          phoneNumber: _phoneController.text,
-          deviceId: _deviceId!,
-          address: _addressController.text,
-          country: _countryController.text,
-          refcode: _refController.text);
+      // Log for debugging
+      print('Phone number: $fullPhoneNumber');
+      print('Generated OTP: $otp');
 
-      setState(() {
-        _isLoading = false;
-      });
+      // Notify.lk API credentials
+      const String userId = '29316';
+      const String apiKey = 'RH9L1weIpJJODyQkFfSe';
+      const String senderId = 'NotifyDEMO';
 
-      print('Registration result: $result');
+      // Notify.lk API endpoint
+      const String url = 'https://app.notify.lk/api/v1/send';
 
-      if (result['success']) {
-        // Registration successful
-        _showCustomSnackBar(
-            context, result['message'] ?? 'Registration successful!', true);
+      // Prepare the message content
+      String message =
+          'Your verification code is $otp. Please use this to verify your account.';
+      print(message);
 
-        // Add a small delay to allow the user to see the success message
-        Future.delayed(const Duration(milliseconds: 1500), () {
-          // User has already paid, navigate to home page
-          Navigator.pushReplacementNamed(context, '/home');
-        });
-      } else {
-        // Registration failed
-        String errorMessage = result['message'] ?? 'Registration failed';
-        if (result.containsKey('errors') && result['errors'] != null) {
-          // Format validation errors if available
-          if (result['errors'] is List) {
-            errorMessage = (result['errors'] as List)
-                .map((e) => e['msg'] ?? e.toString())
-                .join('\n');
+      final Map<String, String> queryParams = {
+        'user_id': userId,
+        'api_key': apiKey,
+        'sender_id': senderId,
+        'to': fullPhoneNumber.replaceAll(
+            '+', ''), // Ensure the phone number is in 947XXXXXXXX format
+        'message': message,
+      };
+
+      try {
+        // Send OTP via Notify.lk API
+        final notifyResponse = await http.post(
+          Uri.parse(url).replace(queryParameters: queryParams),
+        );
+
+        // Log response for debugging
+        print('Notify.lk API response: ${notifyResponse.body}');
+
+        if (notifyResponse.statusCode == 200) {
+          final notifyData = notifyResponse.body;
+
+          // Check if OTP was sent successfully
+          if (notifyData.contains('"status":"success"')) {
+            setState(() {
+              _isLoading = false;
+            });
+
+            // Navigate to OTP verification screen with all user data
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => OtpVerificationScreen(
+                      email: _emailController.text,
+                      phoneNumber: _phoneController.text,
+                      // Pass all the user registration data
+                      name: _nameController.text,
+                      nicNumber: _nicController.text,
+                      username: _usernameController.text,
+                      password: _passwordController.text,
+                      deviceId: _deviceId,
+                      address: _addressController.text,
+                      country: _countryController.text,
+                      refcode: _refController.text,
+                      otp: otp)),
+            );
+          } else {
+            setState(() {
+              _isLoading = false;
+              _showCustomSnackBar(context,
+                  'Failed to send verification code. Please try again.', false);
+            });
           }
+        } else {
+          setState(() {
+            _isLoading = false;
+            _showCustomSnackBar(
+                context,
+                'Failed to send verification code. Status: ${notifyResponse.statusCode}',
+                false);
+          });
         }
-
-        _showCustomSnackBar(context, errorMessage, false);
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+          _showCustomSnackBar(context,
+              'Error sending verification code: ${e.toString()}', false);
+        });
       }
     } catch (e) {
       setState(() {
@@ -496,23 +561,42 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                       const SizedBox(height: 5),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          Checkbox(
-                            value: agreeToTerms,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                agreeToTerms = value!;
-                              });
-                            },
-                            activeColor: Colors.white,
-                          ),
-                          const Text(
-                            'I agree with Privacy & Policy',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ],
+                      Padding(
+                        padding: const EdgeInsets.all(2.5),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  agreeToTerms = !agreeToTerms;
+                                });
+                              },
+                              child: Container(
+                                width: 18,
+                                height: 18,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.white),
+                                  color: agreeToTerms
+                                      ? Colors.white.withOpacity(0.2)
+                                      : Colors.transparent,
+                                ),
+                                child: agreeToTerms
+                                    ? const Icon(
+                                        Icons.check,
+                                        size: 18,
+                                        color: Colors.green,
+                                      )
+                                    : null,
+                              ),
+                            ),
+                            const Text(
+                              'I agree with Privacy & Policy',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 40),
                       Container(

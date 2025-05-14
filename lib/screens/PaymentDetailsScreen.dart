@@ -50,6 +50,8 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
   int _userId = 0;
   bool _isPayed = false;
 
+  int _currentTabIndex = 0;
+
   BankDetails? firstBankDetail;
   String? bankQrCodeUrl;
   String? usdtQrCodeUrl;
@@ -67,6 +69,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_handleTabChange);
     _getBankDetails();
     _loadUserData();
 
@@ -74,8 +77,17 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
     _fetchUsdtRate();
   }
 
+  void _handleTabChange() {
+    if (!_tabController.indexIsChanging) {
+      setState(() {
+        _currentTabIndex = _tabController.index;
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
   }
@@ -169,6 +181,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
             firstBankDetail = bankDetailsList[0];
             bankQrCodeUrl = firstBankDetail!.lankapayQrPath;
             usdtQrCodeUrl = firstBankDetail!.usdtQrPath;
+            usdtHolderName = firstBankDetail!.accountHolderName;
           });
           print('Bank details loaded successfully. ID: ${firstBankDetail!.id}');
 
@@ -729,17 +742,31 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
           ),
           const SizedBox(height: 20),
         ],
-
-        Text("Total Payment Amount", style: AppTheme.textStyleBold),
-        Container(
-          width: width,
-          padding: const EdgeInsets.all(16),
-          margin: const EdgeInsets.symmetric(vertical: 10),
-          decoration: AppTheme.boxDecoration(),
-          child: Text("LKR ${widget.totalAmount?.toStringAsFixed(2) ?? '0.00'}",
-              style: AppTheme.textStyleLarge),
-        ),
-
+        if (_currentTabIndex == 0) ...[
+          Text("Total Payment Amount", style: AppTheme.textStyleBold),
+          Container(
+            width: width,
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            decoration: AppTheme.boxDecoration(),
+            child: Text(
+                "LKR ${widget.totalAmount?.toStringAsFixed(2) ?? '0.00'}",
+                style: AppTheme.textStyleLarge),
+          ),
+        ],
+        if (_currentTabIndex == 1) ...[
+          const SizedBox(height: 10),
+          Text("Total USDT Amount", style: AppTheme.textStyleSubtitle),
+          Container(
+            width: width,
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            decoration: AppTheme.boxDecoration(),
+            child: Text(
+                "USDT ${buyRate != null && widget.totalAmount != null ? ((widget.totalAmount!) / buyRate!).toStringAsFixed(2) : 'N/A'}",
+                style: AppTheme.textStyleLarge),
+          ),
+        ],
         const SizedBox(height: 20),
 
         const Text(
@@ -830,7 +857,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
           ),
 
         // First time coin payment note
-        if (widget.purpose == 'buy_coin' && !_isPayed)
+        if (widget.purpose == 'buy_coin' && _isPayed == 0)
           Container(
             width: width,
             margin: const EdgeInsets.only(top: 16),

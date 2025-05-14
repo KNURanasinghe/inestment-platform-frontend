@@ -1,6 +1,7 @@
 // ignore_for_file: unused_import
 
 import 'package:flutter/material.dart';
+import 'package:investment_plan_app/screens/otp_verification.dart';
 import 'package:investment_plan_app/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
@@ -23,7 +24,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize OneSignal
-  OneSignal.initialize('0d5f52a7-45de-4bcd-8987-b8b9dedc7509');
+  OneSignal.initialize('f60a232e-f993-4322-bd2b-fa1bbbfc59c6');
   await OneSignal.Notifications.requestPermission(true);
 
   // Check login status before building the app
@@ -58,7 +59,11 @@ class MyApp extends StatelessWidget {
         primaryColor: const Color(0xFF2F0D68), // Sets primary color
       ),
       initialRoute: '/login', // Set the initial screen
-      // home: HomeScreen(),
+      // home: const OtpVerificationScreen(
+      //   email: 'aa@gmail.com',
+      //   mode: 'registration',
+      //   phoneNumber: '',
+      // ),
 
       routes: {
         '/login': (context) => const LoginScreen(),
