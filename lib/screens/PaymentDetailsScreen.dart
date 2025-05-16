@@ -436,15 +436,22 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: AppTheme.primaryColor,
+          indicatorColor: _currentTabIndex == 0 ? Colors.green : Colors.yellow,
           indicatorWeight: 3,
+          labelColor: _currentTabIndex == 0 ? Colors.green : Colors.yellow,
           tabs: const [
             Tab(
-              icon: Icon(Icons.account_balance),
+              icon: Icon(
+                Icons.account_balance,
+                color: Colors.green,
+              ),
               text: "Bank Transfer",
             ),
             Tab(
-              icon: Icon(Icons.currency_bitcoin),
+              icon: Icon(
+                Icons.currency_bitcoin,
+                color: Colors.yellow,
+              ),
               text: "USDT Transfer",
             ),
           ],
