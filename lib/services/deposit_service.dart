@@ -108,6 +108,7 @@ class DepositService {
     required double amount,
     required File imageFile,
     String purpose = 'investment', // Default to investment
+    String type = 'bank',
   }) async {
     try {
       print(
@@ -120,6 +121,7 @@ class DepositService {
       request.fields['userId'] = userId.toString();
       request.fields['amount'] = amount.toString();
       request.fields['purpose'] = purpose;
+      request.fields['type'] = type;
 
       // Add file
       String fileName = imageFile.path.split('/').last;

@@ -326,13 +326,14 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
 
     try {
       print('purpose: ${widget.purpose}');
-
+      final type = _currentTabIndex == 0 ? 'bank' : 'usdt';
       // Call deposit service to create deposit
       final response = await _depositService.createDeposit(
         userId: _userId,
         amount: widget.totalAmount!,
         imageFile: _selectedImage!,
         purpose: widget.purpose!,
+        type: type,
       );
 
       setState(() {
