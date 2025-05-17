@@ -341,6 +341,25 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     );
   }
 
+  String maskMobileNumber(String mobileNumber) {
+    // Remove any non-digit characters (spaces, dashes, etc.)
+    final cleanNumber = mobileNumber.replaceAll(RegExp(r'\D'), '');
+
+    // Check if we have a valid number to mask
+    if (cleanNumber.length < 4) {
+      return mobileNumber; // Return original if too short to mask properly
+    }
+
+    // Keep first 2 digits and last 2 digits visible, mask the rest
+    final firstVisible = cleanNumber.substring(0, 2);
+    final lastVisible = cleanNumber.substring(cleanNumber.length - 2);
+
+    // Create asterisks for the middle part
+    final maskedPart = '*' * (cleanNumber.length - 4);
+
+    return '$firstVisible$maskedPart$lastVisible';
+  }
+
   @override
   Widget build(BuildContext context) {
     String pageTitle = "OTP Verification";
@@ -352,6 +371,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
     final String maskedEmail =
         widget.email.replaceRange(2, widget.email.indexOf('@'), '***');
+
+    final String maskedPhone = maskMobileNumber(widget.phoneNumber!);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -386,7 +407,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    "Code sent to: $maskedEmail",
+                    "Code sent to: $maskedPhone",
                     style: const TextStyle(color: Colors.white, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
