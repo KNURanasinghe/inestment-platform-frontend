@@ -113,7 +113,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
       if (referralResponse['success']) {
         final commissions = referralResponse['commissions'];
         setState(() {
-          _referralIncome = commissions.coin;
+          _referralIncome = commissions.coin + commissions.investment;
         });
       }
 
