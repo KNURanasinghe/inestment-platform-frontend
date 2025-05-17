@@ -123,7 +123,8 @@ class _PinEntryPageState extends State<PinEntryPage> {
         _isLoadingIncome = false;
       });
 
-      print('Total income loaded in PinEntryPage: $_totalIncome');
+      print(
+          'Total income loaded in PinEntryPage: $_totalIncome  , $_investmentProfit, $_referralIncome');
     } catch (e) {
       setState(() {
         _isLoadingIncome = false;

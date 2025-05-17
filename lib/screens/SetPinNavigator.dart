@@ -147,7 +147,7 @@ class _SetPinNavigatorState extends State<SetPinNavigator> {
       final referralResponse = await _referralService.getUserReferrals(userId);
       if (referralResponse['success']) {
         final commissions = referralResponse['commissions'];
-        _referralIncome = commissions.coin;
+        _referralIncome = commissions.coin + commissions.investment;
       }
 
       // Calculate total income
@@ -155,7 +155,8 @@ class _SetPinNavigatorState extends State<SetPinNavigator> {
         _totalIncome = _investmentProfit + _referralIncome;
       });
 
-      print('Total income calculated: $_totalIncome');
+      print(
+          'Total income calculated: $_totalIncome , $_investmentProfit , $_referralIncome');
     } catch (e) {
       print('Error loading income data: $e');
       rethrow; // Re-throw to be caught by parent
