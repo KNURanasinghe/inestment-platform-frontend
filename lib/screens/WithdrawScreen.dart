@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../services/deposit_service.dart';
 import '../services/user_service.dart';
-import '../services/withdrawal_service.dart';
+import '../services/investment_service.dart'; // Add this import
+import '../services/referral_service.dart'; // Add this import
 import 'Bank_Account_Details.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
 
@@ -27,7 +29,163 @@ class _WithdrawPageState extends State<WithdrawPage> {
     baseUrl: 'http://151.106.125.212:5021',
   );
 
+  // Add these services
+  final InvestmentService _investmentService = InvestmentService(
+    baseUrl: 'http://151.106.125.212:5021',
+  );
+
+  final ReferralService _referralService = ReferralService(
+    baseUrl: 'http://151.106.125.212:5021',
+  );
+
   String? profileImageUrl;
+  double _totalDepositAmount = 0.0;
+  int _userId = 0; // Changed from final to regular variable
+  bool _isLoadingDeposits = true;
+
+  // Add these variables for income tracking
+  double _totalIncome = 0.0;
+  double _investmentProfit = 0.0;
+  double _referralIncome = 0.0;
+  bool _isLoadingIncome = true;
+  bool hasReachedMaxLimit = false;
+
+  Future<void> _loadUserData() async {
+    try {
+      // Get user ID
+      final userId = await UserApiService.getUserId();
+      if (userId != null && userId > 0) {
+        setState(() {
+          _userId = userId;
+        });
+
+        // Load deposits and income data
+        await Future.wait([
+          _loadUserDeposits(),
+          _loadInvestmentProfits(),
+          _loadReferrals(),
+        ]);
+
+        // Calculate total income and check limits
+        _calculateTotalIncome();
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+    }
+  }
+
+  Future<void> _loadUserDeposits() async {
+    if (_userId <= 0) return;
+
+    setState(() {
+      _isLoadingDeposits = true;
+    });
+
+    try {
+      // Create deposit service
+      final depositService =
+          DepositService(baseUrl: 'http://151.106.125.212:5021');
+
+      // Get all user deposits that are not pending
+      final deposits = await depositService.getUserDeposits(_userId);
+      print('ALL user deposits received: ${deposits.length}');
+
+      // Debug purpose values
+      for (var deposit in deposits) {
+        print(
+            'Deposit ID: ${deposit.id}, Purpose: "${deposit.purpose}", Amount: ${deposit.amount}');
+      }
+
+      final approvedDeposits =
+          deposits.where((deposit) => !deposit.isPending).toList();
+      print('APPROVED user deposits: ${approvedDeposits.length}');
+
+      // Calculate total deposit amount
+      double totalAmount = 0.0;
+      double investmentAmount = 0.0;
+      double coinAmount = 0.0;
+
+      for (var deposit in approvedDeposits) {
+        totalAmount += deposit.amount;
+        if (deposit.purpose == 'investment') {
+          investmentAmount += deposit.amount;
+          print('Added to investment: ${deposit.amount}');
+        } else if (deposit.purpose == 'buy_coin') {
+          coinAmount += deposit.amount;
+          print('Added to coin: ${deposit.amount}');
+        } else {
+          print('UNKNOWN purpose: ${deposit.purpose}');
+        }
+      }
+
+      setState(() {
+        _totalDepositAmount = totalAmount;
+        _isLoadingDeposits = false;
+      });
+
+      print('Total deposit amount: $_totalDepositAmount');
+    } catch (e) {
+      setState(() {
+        _isLoadingDeposits = false;
+      });
+      print('Error loading user deposits: $e');
+    }
+  }
+
+  // Add method to load investment profits (from HomeScreen)
+  Future<void> _loadInvestmentProfits() async {
+    try {
+      // Get investment profits from the API
+      final response = await _investmentService.getUserInvestments(_userId);
+
+      if (response['success']) {
+        final summary = response['summary'];
+        setState(() {
+          _investmentProfit = summary.totalEarned;
+        });
+        print('Investment profit loaded: $_investmentProfit');
+      } else {
+        print('Failed to load investment profits: ${response['message']}');
+      }
+    } catch (e) {
+      print('Error loading investment profits: $e');
+    }
+  }
+
+  // Add method to load referrals (from HomeScreen)
+  Future<void> _loadReferrals() async {
+    try {
+      // Get referral data from the API
+      final response = await _referralService.getUserReferrals(_userId);
+
+      if (response['success']) {
+        final commissions = response['commissions'];
+        setState(() {
+          _referralIncome = commissions.coin + commissions.investment;
+        });
+        print('Referral income loaded: $_referralIncome');
+      } else {
+        print('Failed to load referrals');
+      }
+    } catch (e) {
+      print('Error loading referrals: $e');
+    }
+  }
+
+  // Calculate total income and check limit
+  void _calculateTotalIncome() {
+    setState(() {
+      _totalIncome = _investmentProfit + _referralIncome;
+
+      // Calculate max income limit and check if reached
+      double maxIncomeLimit = (_totalDepositAmount / 1.1) * 3;
+      hasReachedMaxLimit = _totalIncome >= maxIncomeLimit;
+
+      _isLoadingIncome = false;
+    });
+    print(
+        'Total income calculated: $_totalIncome, Max limit reached: $hasReachedMaxLimit');
+  }
 
   // Create a custom SnackBar with gradient and proper styling
   void _showCustomSnackBar(
@@ -111,6 +269,7 @@ class _WithdrawPageState extends State<WithdrawPage> {
   @override
   void initState() {
     super.initState();
+    _loadUserData(); // Load user data including deposits and income
     // Add listener to automatically update fee calculation when amount changes
     amount.addListener(_calculateFees);
     fetchProfileImage();
@@ -134,6 +293,82 @@ class _WithdrawPageState extends State<WithdrawPage> {
         print('image url $imageUrl');
       });
     }
+  }
+
+  // Add method to build the income limit message widget
+  Widget _buildIncomeLimitMessage() {
+    // Calculate max income limit and remaining earnings
+    double maxIncomeLimit = (_totalDepositAmount / 1.1) * 3;
+    double remainingEarnings = maxIncomeLimit - _totalIncome;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      margin: const EdgeInsets.symmetric(vertical: 16.0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: hasReachedMaxLimit
+              ? [Colors.red.withOpacity(0.7), Colors.redAccent.withOpacity(0.5)]
+              : [
+                  Colors.black.withOpacity(0.3),
+                  Colors.black.withOpacity(0.3),
+                ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                hasReachedMaxLimit ? Icons.warning_amber : Icons.info_outline,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                hasReachedMaxLimit
+                    ? 'Maximum Income Limit Reached'
+                    : 'Income Limit',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            hasReachedMaxLimit
+                ? 'You have reached the maximum income limit of 3x your investment amount. Please make additional deposits to increase your withdrawal potential.'
+                : 'You can earn up to LKR ${remainingEarnings.toStringAsFixed(2)} more before reaching your maximum income limit of 3x your investment amount.',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 6),
+          LinearProgressIndicator(
+            value: _totalIncome / maxIncomeLimit,
+            backgroundColor: Colors.white.withOpacity(0.3),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              hasReachedMaxLimit ? Colors.red[300]! : Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -178,6 +413,11 @@ class _WithdrawPageState extends State<WithdrawPage> {
                     ),
                   ),
                   const SizedBox(height: 40),
+
+                  // Show income limit message if data is loaded
+                  if (!_isLoadingIncome && !_isLoadingDeposits)
+                    _buildIncomeLimitMessage(),
+
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -282,6 +522,8 @@ class _WithdrawPageState extends State<WithdrawPage> {
                             prefixStyle: const TextStyle(
                                 color: Colors.white, fontSize: 18),
                           ),
+                          enabled:
+                              !hasReachedMaxLimit, // Disable textfield if limit reached
                         ),
                         const SizedBox(height: 10),
                       ],
@@ -331,64 +573,103 @@ class _WithdrawPageState extends State<WithdrawPage> {
 
                   const SizedBox(height: 30),
                   GestureDetector(
-                    onTap: () {
-                      // Validate withdrawal amount
-                      if (amount.text.isEmpty) {
-                        _showCustomSnackBar(context,
-                            "Please enter an amount to withdraw", false);
-                      } else if (double.tryParse(amount.text) == null) {
-                        _showCustomSnackBar(
-                            context, "Please enter a valid amount", false);
-                      } else if (double.parse(amount.text) <= 0) {
-                        _showCustomSnackBar(
-                            context, "Amount must be greater than zero", false);
-                      } else if (double.parse(amount.text) < 7000) {
-                        _showCustomSnackBar(context,
-                            "Minimum withdrawal amount is LKR7,000", false);
-                      } else if (double.parse(amount.text) > 1000000) {
-                        _showCustomSnackBar(context,
-                            "Maximum withdrawal amount is LKR1,000,000", false);
-                      } else if (double.parse(amount.text) > widget.balance) {
-                        // Add a new validation for insufficient balance
-                        _showCustomSnackBar(context,
-                            "Insufficient balance for this withdrawal", false);
-                      } else {
-                        // Show success message before navigating
-                        _showCustomSnackBar(
-                            context, "Processing withdrawal request...", true);
+                    onTap: hasReachedMaxLimit
+                        ? () {
+                            // Show notice when max limit is reached
+                            _showCustomSnackBar(
+                                context,
+                                "You have reached the maximum income limit. Please make additional deposits to enable withdrawals.",
+                                false);
+                          }
+                        : () {
+                            // Validate withdrawal amount
+                            if (amount.text.isEmpty) {
+                              _showCustomSnackBar(context,
+                                  "Please enter an amount to withdraw", false);
+                            } else if (double.tryParse(amount.text) == null) {
+                              _showCustomSnackBar(context,
+                                  "Please enter a valid amount", false);
+                            } else if (double.parse(amount.text) <= 0) {
+                              _showCustomSnackBar(context,
+                                  "Amount must be greater than zero", false);
+                            } else if (double.parse(amount.text) < 7000) {
+                              _showCustomSnackBar(
+                                  context,
+                                  "Minimum withdrawal amount is LKR7,000",
+                                  false);
+                            } else if (double.parse(amount.text) > 1000000) {
+                              _showCustomSnackBar(
+                                  context,
+                                  "Maximum withdrawal amount is LKR1,000,000",
+                                  false);
+                            } else if (double.parse(amount.text) >
+                                widget.balance) {
+                              // Add a new validation for insufficient balance
+                              _showCustomSnackBar(
+                                  context,
+                                  "Insufficient balance for this withdrawal",
+                                  false);
+                            } else {
+                              // Show success message before navigating
+                              _showCustomSnackBar(context,
+                                  "Processing withdrawal request...", true);
 
-                        // Navigate after a brief delay
-                        Future.delayed(const Duration(milliseconds: 500), () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => BankDetailsPage(
-                                      amount: double.tryParse(amount.text) ??
-                                          0, // Pass the final amount after fee deduction
-                                    )),
-                          );
-                        });
-                      }
-                    },
+                              // Navigate after a brief delay
+                              Future.delayed(const Duration(milliseconds: 500),
+                                  () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => BankDetailsPage(
+                                            amount: double.tryParse(
+                                                    amount.text) ??
+                                                0, // Pass the final amount after fee deduction
+                                          )),
+                                );
+                              });
+                            }
+                          },
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Colors.blue, Colors.purple],
+                        gradient: LinearGradient(
+                          colors: hasReachedMaxLimit
+                              ? [
+                                  Colors.grey,
+                                  Colors.grey.shade600
+                                ] // Grey gradient when disabled
+                              : [
+                                  Colors.blue,
+                                  Colors.purple
+                                ], // Normal gradient when enabled
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Text(
-                          "Next",
-                          style: TextStyle(color: Colors.white, fontSize: 18),
+                          hasReachedMaxLimit ? "Withdrawals Disabled" : "Next",
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 18),
                         ),
                       ),
                     ),
                   ),
+                  if (hasReachedMaxLimit)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12.0),
+                      child: Text(
+                        "Make additional deposits to enable withdrawals",
+                        style: TextStyle(
+                          color: Colors.red[300],
+                          fontSize: 14,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   const SizedBox(height: 10),
                   const Text(
                     "🔒 Your transaction is secured and encrypted",

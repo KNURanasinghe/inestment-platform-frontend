@@ -1,11 +1,7 @@
-// lib/screens/signup_screen.dart
-// ignore_for_file: unused_local_variable
-
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:investment_plan_app/screens/otp_verification.dart';
-import 'package:investment_plan_app/services/user_service.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 
@@ -37,9 +33,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // Create instance of API service
-  final UserApiService _apiService = UserApiService(
-    baseUrl: 'http://151.106.125.212:5021', // Your backend URL
-  );
+
 // Format phone number for API
   String formatPhoneNumber(String phoneNumber) {
     // Remove spaces, dashes, etc.
@@ -148,8 +142,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      final String formattedPhone =
-          formatPhoneNumber(_phoneController.text).toString();
       print('Attempting to register user with the following details:');
       print('Name: ${_nameController.text}');
       print('Email: ${_emailController.text}');
