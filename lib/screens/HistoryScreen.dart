@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 import '../services/investment_service.dart';
 import '../services/referral_service.dart';
 import '../services/withdrawal_service.dart';
+import '../services/deposit_service.dart'; // Add this import for deposit calculations
 import 'ProfitHistoryDialog.dart';
 import 'reerral_history.dart';
 
@@ -42,6 +43,10 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   final ReferralService _referralService =
       ReferralService(baseUrl: 'http://151.106.125.212:5021');
 
+  // Add DepositService for fetching user deposits
+  final DepositService _depositService =
+      DepositService(baseUrl: 'http://151.106.125.212:5021');
+
   // Filter state
   String _currentFilter = 'All';
   bool isPinSet = false;
@@ -50,6 +55,11 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   double _investmentProfit = 0.0;
   double _referralIncome = 0.0;
   double withdrawalAmount = 0.0;
+
+  // Add these variables for income limit calculation
+  double _totalDepositAmount = 0.0;
+  bool _hasReachedMaxLimit = false;
+
 // Example usage in a Flutter widget
   Future<void> _fetchUserTotalWithdrawals() async {
     try {
@@ -80,6 +90,38 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     }
   }
 
+  // Add method to load user deposits
+  Future<void> _loadUserDeposits() async {
+    try {
+      if (_userId <= 0) return;
+
+      // Get all user deposits
+      final deposits = await _depositService.getUserDeposits(_userId);
+      print('ALL user deposits received: ${deposits.length}');
+
+      // Filter for approved deposits only
+      final approvedDeposits =
+          deposits.where((deposit) => !deposit.isPending).toList();
+      print('APPROVED user deposits: ${approvedDeposits.length}');
+
+      // Calculate total deposit amount
+      double totalAmount = 0.0;
+      for (var deposit in approvedDeposits) {
+        totalAmount += deposit.amount;
+      }
+
+      setState(() {
+        _totalDepositAmount = totalAmount;
+      });
+
+      print('Total deposit amount: $_totalDepositAmount');
+    } catch (e) {
+      print('Error loading user deposits: $e');
+      // Don't throw here, just log error
+    }
+  }
+
+  // Update this method to also calculate income limit
   Future<void> _loadIncomeData() async {
     try {
       final userId = await UserApiService.getUserId();
@@ -102,12 +144,17 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
         _referralIncome = commissions.coin;
       }
 
-      // Calculate total income
+      // Calculate total income and check if max limit reached
       setState(() {
         _totalIncome = _investmentProfit + _referralIncome;
+
+        // Calculate maximum income limit and check if it's reached
+        double maxIncomeLimit = (_totalDepositAmount / 1.1) * 3;
+        _hasReachedMaxLimit = _totalIncome >= maxIncomeLimit;
       });
 
       print('Total income calculated: $_totalIncome');
+      print('Has reached max limit: $_hasReachedMaxLimit');
     } catch (e) {
       print('Error loading income data: $e');
       rethrow; // Re-throw to be caught by parent
@@ -123,13 +170,14 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   Future<void> _loadUserIdAndFetchTransactions() async {
     try {
       final userId = await UserApiService.getUserId() ?? 0;
-      await _loadIncomeData();
-      await _fetchUserTotalWithdrawals();
-
       setState(() {
         _userId = userId;
       });
 
+      // Load deposits first, then income data which depends on deposits
+      await _loadUserDeposits();
+      await _loadIncomeData();
+      await _fetchUserTotalWithdrawals();
       await _fetchTransactionHistory();
     } catch (e) {
       setState(() {
@@ -301,26 +349,37 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                 child: Image.asset(
                     'assets/402-4023672_referrals-corporate-commercial-icon.png'))),
         GestureDetector(
-            onTap: () {
-              // Handle notification icon press
-              showDialog(
-                context: context,
-                builder: (context) => ProfitHistoryDialog(userId: _userId),
-              );
-            },
-            child: SizedBox(
-                height: 35, width: 35, child: Image.asset('assets/gift.png'))),
-
-        // IconButton(
-        //   icon: const Icon(Icons., color: Colors.white),
-        //   onPressed: () {
-        //     // Handle notification icon press
-        //     showDialog(
-        //       context: context,
-        //       builder: (context) => ProfitHistoryDialog(userId: _userId),
-        //     );
-        //   },
-        // ),
+          onTap: () {
+            // Updated to pass hasReachedMaxLimit parameter to ProfitHistoryDialog
+            showDialog(
+              context: context,
+              builder: (context) => ProfitHistoryDialog(
+                userId: _userId,
+                hasReachedMaxLimit: _hasReachedMaxLimit,
+              ),
+            );
+          },
+          child: Stack(
+            children: [
+              SizedBox(
+                  height: 35, width: 35, child: Image.asset('assets/gift.png')),
+              // Add a small indicator if max limit reached
+              if (_hasReachedMaxLimit)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -590,18 +649,4 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
       ),
     );
   }
-
-// Widget _buildBottomNavigationBar() {
-//   return BottomNavigationBar(
-//     backgroundColor: const Color(0xFF2C1A49),
-//     unselectedItemColor: Colors.grey,
-//     selectedItemColor: Colors.white,
-//     items: const [
-//       BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-//       BottomNavigationBarItem(icon: Icon(Icons.attach_money), label: "Deposit"),
-//       BottomNavigationBarItem(icon: Icon(Icons.money_off), label: "Withdraw"),
-//       BottomNavigationBarItem(icon: Icon(Icons.history), label: "History"),
-//       BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-//     ],
-//   );
 }

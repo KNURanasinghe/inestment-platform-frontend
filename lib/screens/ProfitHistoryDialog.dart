@@ -6,8 +6,13 @@ import '../widgets/AppTheme.dart';
 
 class ProfitHistoryDialog extends StatefulWidget {
   final int userId;
+  final bool hasReachedMaxLimit; // Add this parameter
 
-  const ProfitHistoryDialog({super.key, required this.userId});
+  const ProfitHistoryDialog({
+    super.key,
+    required this.userId,
+    this.hasReachedMaxLimit = false, // Default to false if not provided
+  });
 
   @override
   _ProfitHistoryDialogState createState() => _ProfitHistoryDialogState();
@@ -228,23 +233,79 @@ class _ProfitHistoryDialogState extends State<ProfitHistoryDialog>
           ),
         ),
         const SizedBox(height: 16),
+
+        // Add max limit warning if limit is reached
+        if (widget.hasReachedMaxLimit)
+          Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+            margin: const EdgeInsets.only(bottom: 16.0),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.red.withOpacity(0.7),
+                  Colors.redAccent.withOpacity(0.5)
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.warning_amber,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Maximum Income Limit Reached. Please make additional deposits to enable claiming profits.',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () {
-              // Add logic to claim profits
-              _claimTodayProfits();
-            },
+            onPressed: widget.hasReachedMaxLimit
+                ? null // Disable button if max limit reached
+                : () {
+                    // Add logic to claim profits
+                    _claimTodayProfits();
+                  },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
+              backgroundColor: widget.hasReachedMaxLimit
+                  ? Colors.grey // Grey when disabled
+                  : Colors.green,
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
+              // This makes the button appear disabled
+              disabledBackgroundColor: Colors.grey.shade600,
+              disabledForegroundColor: Colors.white70,
             ),
-            child: const Text(
-              'Claim All Profits',
-              style: TextStyle(fontSize: 16),
+            child: Text(
+              widget.hasReachedMaxLimit
+                  ? 'Claiming Disabled'
+                  : 'Claim All Profits',
+              style: const TextStyle(fontSize: 16),
             ),
           ),
         ),
@@ -399,7 +460,7 @@ class _ProfitHistoryDialogState extends State<ProfitHistoryDialog>
   }
 
   Future<void> _claimTodayProfits() async {
-    if (_todayUnclaimedProfits.isEmpty) {
+    if (_todayUnclaimedProfits.isEmpty || widget.hasReachedMaxLimit) {
       return;
     }
 
