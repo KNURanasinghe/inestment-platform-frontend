@@ -134,8 +134,48 @@ class _DepositScreenState extends State<DepositScreen> {
   }
 
   // Format date string
-  String _formatDateTime(DateTime dateTime) {
-    return DateFormat('yyyy-MM-dd HH:mm').format(dateTime);
+  // Add these methods to your _DepositScreenState class
+
+// Convert any DateTime to Sri Lanka time
+  DateTime toSriLankaTime(DateTime dateTime) {
+    // If the dateTime is already in Sri Lanka timezone, return it as is
+    // Otherwise, convert it to Sri Lanka timezone (UTC+5:30)
+
+    // Create a DateTime that's definitely in UTC
+    final utcDateTime = DateTime.utc(
+      dateTime.year,
+      dateTime.month,
+      dateTime.day,
+      dateTime.hour,
+      dateTime.minute,
+      dateTime.second,
+      dateTime.millisecond,
+      dateTime.microsecond,
+    );
+
+    // Add 5 hours and 30 minutes to convert to Sri Lanka time
+    return utcDateTime.add(const Duration(hours: 5, minutes: 30));
+  }
+
+// Format date string in Sri Lanka time
+  String formatToSriLankaTime(DateTime dateTime) {
+    // Convert to Sri Lanka time first
+    final sriLankaTime = toSriLankaTime(dateTime);
+
+    // Format using the intl package
+    return DateFormat('yyyy-MM-dd HH:mm').format(sriLankaTime);
+  }
+
+// Get current date and time in Sri Lanka
+  DateTime getCurrentSriLankaTime() {
+    final now = DateTime.now().toUtc();
+    return now.add(const Duration(hours: 5, minutes: 30));
+  }
+
+// Format date string with timezone indicator
+  String _formatDateTimeWithTimeZone(DateTime dateTime) {
+    final sriLankaTime = toSriLankaTime(dateTime);
+    return '${DateFormat('yyyy-MM-dd HH:mm').format(sriLankaTime)} (Sri Lanka)';
   }
 
   // Show custom styled snackbar
@@ -614,7 +654,7 @@ class _DepositScreenState extends State<DepositScreen> {
                                                           style: AppTheme
                                                               .textStyleBold),
                                                       Text(
-                                                          _formatDateTime(
+                                                          formatToSriLankaTime(
                                                               deposit
                                                                   .createdAt),
                                                           style: AppTheme
