@@ -15,6 +15,7 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   bool agreeToTerms = false;
   bool _obscureText = true;
+  bool _obscureText1 = true;
   bool _isLoading = false;
   String? _deviceId;
 
@@ -25,12 +26,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _nicController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _passwordController1 = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _countryController = TextEditingController();
   final TextEditingController _refController = TextEditingController();
 
   // Form key for validation_refController
   final _formKey = GlobalKey<FormState>();
+
+  bool _passwordsMatch = false;
 
   // Create instance of API service
 
@@ -128,6 +132,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   // Function to handle registration
   Future<void> _registerUser() async {
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (_passwordController.text != _passwordController1.text) {
+      _showCustomSnackBar(context, 'Passwords do not match', false);
       return;
     }
 
@@ -455,6 +464,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       TextFormField(
                         cursorColor: Colors.white,
                         controller: _passwordController,
+                        onChanged: (value) {
+                          setState(() {
+                            _passwordsMatch =
+                                value == _passwordController1.text &&
+                                    value.isNotEmpty;
+                          });
+                        },
                         style: const TextStyle(color: Colors.white),
                         obscureText: _obscureText,
                         decoration: InputDecoration(
@@ -490,6 +506,59 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           }
                           if (value.length < 6) {
                             return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        cursorColor: Colors.white,
+                        controller: _passwordController1,
+                        onChanged: (value) {
+                          setState(() {
+                            _passwordsMatch =
+                                value == _passwordController.text &&
+                                    value.isNotEmpty;
+                          });
+                        },
+                        style: const TextStyle(color: Colors.white),
+                        obscureText: _obscureText1,
+                        decoration: InputDecoration(
+                          hintText: 'Confirm Password',
+                          hintStyle: const TextStyle(color: Colors.white70),
+                          filled: true,
+                          fillColor: AppTheme.textFieldColor,
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              borderSide: BorderSide.none),
+                          prefixIcon: const Icon(
+                            Icons.lock,
+                            color: Colors.white,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureText1
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Colors.white,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscureText1 = !_obscureText1;
+                              });
+                            },
+                          ),
+                          errorStyle: const TextStyle(color: Colors.amber),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter Confirm password';
+                          }
+                          if (value.length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          if (_passwordController.text != value) {
+                            return 'Password does not match';
                           }
                           return null;
                         },
