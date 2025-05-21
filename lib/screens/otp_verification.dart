@@ -364,7 +364,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   Widget build(BuildContext context) {
     String pageTitle = "OTP Verification";
     String pageSubtitle = widget.mode == 'registration'
-        ? "Please enter the 6-digit code sent to your email"
+        ? "Please enter the 6-digit code sent to your phone number"
         : widget.mode == 'passwordReset'
             ? "Enter the verification code to reset your password"
             : "Enter the verification code to verify your account";
