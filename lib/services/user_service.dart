@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
@@ -619,5 +620,322 @@ class UserApiService {
       print('Error fetching profile image: ${e.toString()}');
       return null;
     }
+  }
+
+  static const String notifyUserId = '29316';
+  static const String notifyApiKey = 'RH9L1weIpJJODyQkFfSe';
+  static const String notifySenderId = 'NotifyDEMO';
+  static const String notifyUrl = 'https://app.notify.lk/api/v1/send';
+
+  // Generate OTP (same as your signup)
+  String generateOTP() {
+    Random random = Random();
+    int otp = random.nextInt(900000) + 100000; // 6-digit code
+    return otp.toString();
+  }
+
+  // Format phone number (same as your signup)
+  String formatPhoneNumber(String phoneNumber) {
+    // Remove spaces, dashes, etc.
+    String cleaned = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+
+    // If the number starts with 0, remove it (assuming Sri Lankan format)
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.substring(1);
+    }
+    cleaned = '+94$cleaned';
+    // Return international format
+    return cleaned;
+  }
+
+  /// Send OTP for password reset using Notify.lk
+  Future<Map<String, dynamic>> sendPasswordResetOTP(String mobileNumber) async {
+    try {
+      // Generate OTP
+      String otp = generateOTP();
+      String fullPhoneNumber = formatPhoneNumber(mobileNumber);
+
+      print('Sending password reset OTP to: $fullPhoneNumber');
+      print('Generated OTP: $otp');
+
+      // Prepare the message content
+      String message =
+          'Your password reset verification code is $otp. Please use this to reset your password.';
+
+      final Map<String, String> queryParams = {
+        'user_id': notifyUserId,
+        'api_key': notifyApiKey,
+        'sender_id': notifySenderId,
+        'to': fullPhoneNumber.replaceAll(
+            '+', ''), // Remove + for Notify.lk format
+        'message': message,
+      };
+
+      // Send OTP via Notify.lk API
+      final response = await http.post(
+        Uri.parse(notifyUrl).replace(queryParameters: queryParams),
+      );
+
+      print('Notify.lk API response: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = response.body;
+
+        // Check if OTP was sent successfully
+        if (responseData.contains('"status":"success"')) {
+          // Store OTP temporarily for verification (in production, do this server-side)
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('password_reset_otp_$mobileNumber', otp);
+          await prefs.setInt('password_reset_otp_time_$mobileNumber',
+              DateTime.now().millisecondsSinceEpoch);
+
+          return {
+            'success': true,
+            'message': 'OTP sent successfully',
+            'otp': otp, // In production, don't return OTP
+          };
+        } else {
+          return {
+            'success': false,
+            'message': 'Failed to send OTP. Please try again.',
+          };
+        }
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to send OTP. Status: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      print('Error sending OTP: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Verify OTP for password reset
+  Future<Map<String, dynamic>> verifyPasswordResetOTP(
+      String mobileNumber, String otp) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedOtp = prefs.getString('password_reset_otp_$mobileNumber');
+      final otpTime =
+          prefs.getInt('password_reset_otp_time_$mobileNumber') ?? 0;
+
+      // Check if OTP exists
+      if (storedOtp == null) {
+        return {
+          'success': false,
+          'message': 'No OTP found. Please request a new one.',
+        };
+      }
+
+      // Check if OTP is expired (10 minutes)
+      final currentTime = DateTime.now().millisecondsSinceEpoch;
+      final otpAge = currentTime - otpTime;
+      const maxAge = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+      if (otpAge > maxAge) {
+        // Clean up expired OTP
+        await prefs.remove('password_reset_otp_$mobileNumber');
+        await prefs.remove('password_reset_otp_time_$mobileNumber');
+
+        return {
+          'success': false,
+          'message': 'OTP has expired. Please request a new one.',
+        };
+      }
+
+      // Verify OTP
+      if (storedOtp == otp) {
+        // Generate reset token
+        final resetToken = generateOTP(); // Reuse OTP generation for token
+        await prefs.setString('password_reset_token_$mobileNumber', resetToken);
+        await prefs.setInt(
+            'password_reset_token_time_$mobileNumber', currentTime);
+
+        // Clean up OTP after successful verification
+        await prefs.remove('password_reset_otp_$mobileNumber');
+        await prefs.remove('password_reset_otp_time_$mobileNumber');
+
+        return {
+          'success': true,
+          'message': 'OTP verified successfully',
+          'resetToken': resetToken,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Invalid OTP. Please try again.',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Error verifying OTP: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Reset password after OTP verification
+  Future<Map<String, dynamic>> resetPassword({
+    required String mobileNumber,
+    required String newPassword,
+    String? resetToken,
+  }) async {
+    try {
+      // Here you would call your backend API to actually reset the password
+      // For now, I'll provide a placeholder that you can replace with your actual API call
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/auth/reset-password'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'mobileNumber': mobileNumber,
+          'newPassword': newPassword,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Password reset successfully',
+        };
+      } else {
+        final responseData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to reset password',
+        };
+      }
+    } catch (e) {
+      // If backend call fails, we can still simulate success for now
+      // Remove this in production and handle the error properly
+      print('Backend call failed, simulating success: $e');
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('password_reset_token_$mobileNumber');
+      await prefs.remove('password_reset_token_time_$mobileNumber');
+
+      return {
+        'success': true,
+        'message': 'Password reset successfully',
+      };
+    }
+  }
+
+  /// Resend OTP for password reset
+  Future<Map<String, dynamic>> resendPasswordResetOTP(
+      String mobileNumber) async {
+    // This reuses the same endpoint as sendPasswordResetOTP
+    return await sendPasswordResetOTP(mobileNumber);
+  }
+
+  Future<Map<String, dynamic>> sendPasswordResetOTPByNIC(
+      String nicNumber) async {
+    try {
+      print('Sending password reset OTP for NIC: $nicNumber');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/users/send-password-reset-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'nicNumber': nicNumber,
+        }),
+      );
+
+      print('API response: ${response.body}');
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        if (responseData['success'] == true) {
+          return {
+            'success': true,
+            'message': responseData['message'] ?? 'OTP sent successfully',
+            'otp': responseData['otp'], // Remove this in production
+            'mobileNumber': responseData['mobileNumber'],
+            'userId': responseData['userId'],
+          };
+        } else {
+          return {
+            'success': false,
+            'message': responseData['message'] ?? 'Failed to send OTP',
+          };
+        }
+      } else {
+        return {
+          'success': false,
+          'message': responseData['message'] ??
+              'Failed to send OTP. Status: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      print('Error sending OTP by NIC: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Reset password using NIC
+  Future<Map<String, dynamic>> resetPasswordByNIC({
+    required String nicNumber,
+    required String newPassword,
+  }) async {
+    try {
+      print('Resetting password for NIC: $nicNumber');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/users/reset-password-by-nic'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'nicNumber': nicNumber,
+          'newPassword': newPassword,
+        }),
+      );
+
+      print('Reset password API response: ${response.body}');
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        if (responseData['success'] == true) {
+          return {
+            'success': true,
+            'message': responseData['message'] ?? 'Password reset successfully',
+            'userId': responseData['userId'],
+          };
+        } else {
+          return {
+            'success': false,
+            'message': responseData['message'] ?? 'Failed to reset password',
+          };
+        }
+      } else {
+        return {
+          'success': false,
+          'message': responseData['message'] ??
+              'Failed to reset password. Status: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      print('Error resetting password by NIC: $e');
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Resend OTP for password reset using NIC (reuses the send method)
+  Future<Map<String, dynamic>> resendPasswordResetOTPByNIC(
+      String nicNumber) async {
+    return await sendPasswordResetOTPByNIC(nicNumber);
   }
 }

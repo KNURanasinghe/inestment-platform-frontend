@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/gestures.dart';
 import 'package:investment_plan_app/screens/WelcomeScreen.dart';
+import 'package:investment_plan_app/screens/forgot_password_screen.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart'; // Import AppTheme
 import 'package:investment_plan_app/screens/home_screen.dart';
 
@@ -219,6 +221,37 @@ class _LoginScreenState extends State<LoginScreen> {
                                 const Text(
                                   'Remember me',
                                   style: TextStyle(color: Colors.white),
+                                ),
+                                const Spacer(),
+
+                                RichText(
+                                  text: TextSpan(
+                                    text: '  ',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: 'Forgot Password?',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () {
+                                            // Navigate to forgot password screen
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const ForgotPasswordScreen(),
+                                              ),
+                                            );
+                                          },
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),

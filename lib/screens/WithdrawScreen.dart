@@ -481,7 +481,7 @@ class _WithdrawPageState extends State<WithdrawPage> {
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
-                            'Minimum withdrawal: LKR7,000\nMaximum withdrawal: LKR1,000,000\nA 3% service fee will be deducted from your withdrawal amount',
+                            'Minimum withdrawal: LKR4,000\nMaximum withdrawal: LKR1,000,000\nA 3% service fee will be deducted from your withdrawal amount',
                             style: TextStyle(
                               color: Colors.white70,
                               fontSize: 14,
@@ -592,10 +592,10 @@ class _WithdrawPageState extends State<WithdrawPage> {
                             } else if (double.parse(amount.text) <= 0) {
                               _showCustomSnackBar(context,
                                   "Amount must be greater than zero", false);
-                            } else if (double.parse(amount.text) < 7000) {
+                            } else if (double.parse(amount.text) < 4000) {
                               _showCustomSnackBar(
                                   context,
-                                  "Minimum withdrawal amount is LKR7,000",
+                                  "Minimum withdrawal amount is LKR4,000",
                                   false);
                             } else if (double.parse(amount.text) > 1000000) {
                               _showCustomSnackBar(

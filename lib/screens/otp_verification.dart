@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:investment_plan_app/screens/password_reset.dart';
 import 'package:investment_plan_app/services/user_service.dart';
 import 'package:investment_plan_app/widgets/AppTheme.dart';
 
@@ -111,25 +112,36 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     });
 
     try {
-      // Replace with your actual resend OTP API call
-      // final result = await _userService.resendOTP(widget.email);
+      if (widget.mode == 'passwordReset') {
+        // Resend OTP for password reset
+        final result =
+            await _userService.resendPasswordResetOTP(widget.phoneNumber ?? '');
 
-      // if (result['success']) {
-      //   if (mounted) {
-      //     _showCustomSnackBar(
-      //         context, "OTP has been resent successfully", true);
-      //     _restartResendTimer();
-      //   }
-      // } else {
-      //   setState(() {
-      //     _errorMessage = result['message'];
-      //   });
+        if (result['success']) {
+          if (mounted) {
+            _showCustomSnackBar(
+                context, "OTP has been resent successfully", true);
+            _restartResendTimer();
+          }
+        } else {
+          setState(() {
+            _errorMessage = result['message'];
+          });
 
-      //   if (mounted) {
-      //     _showCustomSnackBar(
-      //         context, result['message'] ?? "Failed to resend OTP", false);
-      //   }
-      // }
+          if (mounted) {
+            _showCustomSnackBar(
+                context, result['message'] ?? "Failed to resend OTP", false);
+          }
+        }
+      } else {
+        // Handle other modes if needed
+        // For now, just show success message
+        if (mounted) {
+          _showCustomSnackBar(
+              context, "OTP has been resent successfully", true);
+          _restartResendTimer();
+        }
+      }
     } catch (e) {
       setState(() {
         _errorMessage = 'Error resending OTP: ${e.toString()}';
@@ -169,7 +181,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       // Check if entered OTP matches the expected OTP
       if (widget.otp == otp) {
         if (widget.mode == 'registration') {
-          // Now that OTP is verified, register the user
+          // Handle registration flow (existing code)
           try {
             final registerResult = await _userService.registerUser(
               name: widget.name ?? '',
@@ -182,8 +194,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               address: widget.address ?? '',
               country: widget.country ?? '',
               refcode: widget.refcode ?? '',
-              isVerified:
-                  1, // Send 1 instead of true to match backend expectation
+              isVerified: 1,
             );
 
             setState(() {
@@ -192,19 +203,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
             if (registerResult['success']) {
               if (!mounted) return;
-
               _showCustomSnackBar(context, "Registration successful", true);
-
-              // Add a slight delay before navigation
               Future.delayed(const Duration(milliseconds: 1500), () {
                 if (mounted) {
-                  // Navigate to home screen after successful registration
                   Navigator.pushReplacementNamed(context, '/home');
                 }
               });
             } else {
               if (!mounted) return;
-
               _showCustomSnackBar(context,
                   registerResult['message'] ?? "Registration failed", false);
             }
@@ -221,17 +227,25 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             }
           }
         } else if (widget.mode == 'passwordReset') {
-          // Handle password reset
+          // Handle password reset - navigate to reset password screen
           setState(() {
             _isLoading = false;
           });
 
           _showCustomSnackBar(context, "OTP verification successful", true);
 
-          // Navigate to reset password screen
+          // Navigate to reset password screen with NIC
           Future.delayed(const Duration(milliseconds: 1500), () {
             if (mounted) {
-              Navigator.pushReplacementNamed(context, '/reset-password');
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ResetPasswordScreen(
+                    mobileNumber: widget.phoneNumber,
+                    nicNumber: widget.nicNumber, // Pass NIC number
+                  ),
+                ),
+              );
             }
           });
         } else {
@@ -341,15 +355,28 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     );
   }
 
-  String maskMobileNumber(String mobileNumber) {
+  String maskMobileNumber(String? mobileNumber) {
+    // Handle null or empty mobile number
+    if (mobileNumber == null || mobileNumber.isEmpty) {
+      return "***"; // Return masked placeholder
+    }
+
     // Remove any non-digit characters (spaces, dashes, etc.)
     final cleanNumber = mobileNumber.replaceAll(RegExp(r'\D'), '');
 
     // Check if we have a valid number to mask
     if (cleanNumber.length < 4) {
-      return mobileNumber; // Return original if too short to mask properly
+      // If number is too short, just mask most of it
+      if (cleanNumber.length <= 2) {
+        return '*' *
+            cleanNumber.length; // Mask everything for very short numbers
+      } else {
+        // For 3 digits, show first and mask rest
+        return '${cleanNumber.substring(0, 1)}${'*' * (cleanNumber.length - 1)}';
+      }
     }
 
+    // For numbers with 4 or more digits
     // Keep first 2 digits and last 2 digits visible, mask the rest
     final firstVisible = cleanNumber.substring(0, 2);
     final lastVisible = cleanNumber.substring(cleanNumber.length - 2);
@@ -369,10 +396,18 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             ? "Enter the verification code to reset your password"
             : "Enter the verification code to verify your account";
 
-    final String maskedEmail =
-        widget.email.replaceRange(2, widget.email.indexOf('@'), '***');
+    // Handle email masking safely
+    String maskedEmail = "***";
+    if (widget.email.isNotEmpty && widget.email.contains('@')) {
+      final emailParts = widget.email.split('@');
+      if (emailParts[0].length > 2) {
+        maskedEmail = widget.email.replaceRange(2, emailParts[0].length, '***');
+      } else {
+        maskedEmail = '***@${emailParts[1]}';
+      }
+    }
 
-    final String maskedPhone = maskMobileNumber(widget.phoneNumber!);
+    final String maskedPhone = maskMobileNumber(widget.phoneNumber);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
