@@ -608,7 +608,7 @@ class _PaymentDetailsScreenState extends State<PaymentDetailsScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildDetailRow("Account Holder Name", usdtHolderName),
-                  _buildDetailRow("USDT Network", "TRC20 (Tron)"),
+                  _buildDetailRow("USDT Network", "Binance UID"),
                   // You might want to add the wallet address if available
                 ],
               ),

@@ -373,4 +373,39 @@ class ReferralService {
       };
     }
   }
+
+  Future<Map<String, dynamic>> getUserReferralLevels(int userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/users/$userId/referral-levels'),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+
+        return {
+          'success': true,
+          'data': {
+            'userId': data['userId'],
+            'totalReferrals': data['totalReferrals'],
+            'levelCounts': data['levelCounts'],
+            'levelBreakdown': data['levelBreakdown'],
+            'maxLevel': data['maxLevel'],
+          },
+        };
+      } else {
+        final Map<String, dynamic> errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to fetch referral levels',
+        };
+      }
+    } catch (e) {
+      print('Error fetching user referral levels: $e');
+      return {
+        'success': false,
+        'message': 'Error fetching user referral levels: $e',
+      };
+    }
+  }
 }

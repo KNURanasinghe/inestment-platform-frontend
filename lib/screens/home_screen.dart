@@ -85,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   double withdrawalAmount = 0.0;
   int _totalReferralsCount = 0;
+  int _totalReferralsCount1 = 0;
 
   String? profileImageUrl;
 
@@ -889,8 +890,17 @@ class _HomeScreenState extends State<HomeScreen>
     });
 
     try {
-      // Get referral data from the API
+      // Get referral data from the API   getUserReferralLevels
       final response = await _referralService.getUserReferrals(_userId);
+
+      final responsetotal =
+          await _referralService.getUserReferralLevels(_userId);
+      if (responsetotal['success']) {
+        setState(() {
+          _totalReferralsCount1 = responsetotal['totalReferrals'];
+        });
+      }
+
       print('response home $response');
 
       if (response['success']) {
@@ -1478,7 +1488,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                         ),
                                                       )
                                                     : Text(
-                                                        '$_totalReferralsCount', // Display the total referrals count
+                                                        '$_totalReferralsCount1', // Display the total referrals count
                                                         style: const TextStyle(
                                                           color: Colors.white,
                                                           fontWeight:
