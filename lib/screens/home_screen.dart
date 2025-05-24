@@ -285,6 +285,11 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _loadAllData({bool forceRefresh = false}) async {
     try {
+      final userId = await UserApiService.getUserId();
+
+      setState(() {
+        _userId = userId!;
+      });
       // Load critical user data first
       await _loadUserData();
 
@@ -891,16 +896,15 @@ class _HomeScreenState extends State<HomeScreen>
 
     try {
       // Get referral data from the API   getUserReferralLevels
-      final response = await _referralService.getUserReferrals(_userId);
 
       final responsetotal =
           await _referralService.getUserReferralLevels(_userId);
       if (responsetotal['success']) {
         setState(() {
-          _totalReferralsCount1 = responsetotal['totalReferrals'];
+          _totalReferralsCount1 = responsetotal['data']['totalReferrals'];
         });
       }
-
+      final response = await _referralService.getUserReferrals(_userId);
       print('response home $response');
 
       if (response['success']) {

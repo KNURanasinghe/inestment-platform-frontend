@@ -259,7 +259,7 @@ class ReferralService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
+        print('refferela ${data['directReferrals']}');
         // Add validation
         if (data['directReferrals'] == null ||
             data['levelCounts'] == null ||
