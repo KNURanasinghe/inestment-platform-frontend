@@ -58,12 +58,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primaryColor: const Color(0xFF2F0D68), // Sets primary color
       ),
-      initialRoute: '/login', // Set the initial screen
-      // home: const OtpVerificationScreen(
-      //   email: 'aa@gmail.com',
-      //   mode: 'registration',
-      //   phoneNumber: '',
-      // ),
+      home: const LoginScreen(),
 
       routes: {
         '/login': (context) => const LoginScreen(),

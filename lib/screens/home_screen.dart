@@ -23,6 +23,9 @@ class _HomeScreenState extends State<HomeScreen>
     with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
   final CarouselSliderController _carouselController =
       CarouselSliderController();
+  final CarouselSliderController _autoScrollCarouselController =
+      CarouselSliderController(); // New controller for auto-scroll
+
   int _walletCurrentPage = 0;
   final int _currentIndex = 0;
   double _userCoinCount = 0.0;
@@ -31,6 +34,8 @@ class _HomeScreenState extends State<HomeScreen>
   String _userCoinsError = '';
   bool _isLoadingProfile = true; // Add this line
   bool _isLoadingInvestments = true; // Add this line
+
+  bool _isRefreshing = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -135,10 +140,6 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    // Initialize with default values to prevent loading indicators
-    _userCoinCount = 0.0;
-    _userCoinValueLKR = 0.0;
-    _isLoadingUserCoins = false;
 
     _loadAllData();
 
@@ -150,11 +151,6 @@ class _HomeScreenState extends State<HomeScreen>
           _currentPage = page;
         });
       }
-    });
-
-    // Start auto-scrolling after the first frame is rendered
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startAutoScrolling();
     });
   }
 
@@ -200,21 +196,94 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // Start auto-scrolling
-  void _startAutoScrolling() {
-    // Cancel any existing timer to prevent duplicates
-    _autoScrollTimer?.cancel();
-    _autoScrollTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (_autoScrollController.hasClients && mounted) {
-        print('Auto-scrolling to page: ${(_autoScrollPage + 1) % 10}');
-        _autoScrollController.animateToPage(
-          (_autoScrollPage + 1) % 10,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
-      } else {
-        print('PageView not mounted or widget disposed');
-      }
-    });
+
+  Widget _buildAutoScrollSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
+      child: SizedBox(
+        height: 70,
+        child: CarouselSlider.builder(
+          carouselController: _autoScrollCarouselController,
+          options: CarouselOptions(
+            height: 70,
+            aspectRatio: 16 / 9,
+            viewportFraction: 0.8,
+            initialPage: 0,
+            enableInfiniteScroll: true,
+            reverse: false,
+            autoPlay:
+                !_isLoadingCoinValue, // Only auto-play when coin value is loaded
+            autoPlayInterval:
+                Duration(seconds: 5), // Increase interval to reduce updates
+            autoPlayAnimationDuration:
+                Duration(milliseconds: 800), // Slower animation
+            autoPlayCurve: Curves.easeInOut,
+            enlargeCenterPage: false,
+            enlargeFactor: 0.0,
+            onPageChanged: (index, reason) {
+              // Reduce setState calls - only update if really necessary
+              if (_autoScrollPage != index) {
+                setState(() {
+                  _autoScrollPage = index;
+                });
+                print('Auto-scroll page changed to: $index');
+              }
+            },
+            scrollDirection: Axis.horizontal,
+            pauseAutoPlayOnTouch: true,
+            pauseAutoPlayOnManualNavigate: true,
+            pauseAutoPlayInFiniteScroll: false,
+          ),
+          itemCount: 3,
+          itemBuilder: (context, index, realIndex) {
+            return _buildAutoScrollContainer(index);
+          },
+        ),
+      ),
+    );
+  }
+
+// Optimize the container builder
+  Widget _buildAutoScrollContainer(int index) {
+    // Cache the coin value string to avoid recalculating
+    final coinValueText = _isLoadingCoinValue
+        ? 'Loading...'
+        : 'Today TEC 1 Coin = LKR ${_coinValue.toStringAsFixed(2)}';
+
+    return Container(
+      width: 300,
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.red[900]!.withOpacity(0.8),
+            Color(0xFFFFD700).withOpacity(0.9),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          coinValueText,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
   }
 
   Widget _buildWalletSection() {
@@ -229,16 +298,20 @@ class _HomeScreenState extends State<HomeScreen>
             initialPage: 0,
             enableInfiniteScroll: true,
             reverse: false,
+            // autoPlay: false, // Disable auto-play to reduce blinking
+            // If you want auto-play, increase the interval:
             autoPlay: true,
-            autoPlayInterval: Duration(seconds: 5),
+            autoPlayInterval: Duration(seconds: 8),
             autoPlayAnimationDuration: Duration(milliseconds: 800),
             autoPlayCurve: Curves.fastOutSlowIn,
             enlargeCenterPage: true,
             enlargeFactor: 0.3,
             onPageChanged: (index, reason) {
-              setState(() {
-                _walletCurrentPage = index;
-              });
+              if (_walletCurrentPage != index) {
+                setState(() {
+                  _walletCurrentPage = index;
+                });
+              }
             },
             scrollDirection: Axis.horizontal,
           ),
@@ -287,23 +360,31 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       final userId = await UserApiService.getUserId();
 
+      if (userId == null || userId <= 0) return;
+
       setState(() {
-        _userId = userId!;
+        _userId = userId;
+        // Set all loading states to true in one setState call
+        _isLoadingProfile = true;
+        _isLoadingCoinValue = true;
+        _isLoadingInvestments = true;
+        _isLoadingUserCoins = true;
+        _isLoadingDeposits = true;
+        _isLoadingReferrals = true;
+        _isLoadingTodayProfit = true;
       });
+
       // Load critical user data first
       await _loadUserData();
 
-      if (_userId <= 0) return;
-
       // Parallel loading with error isolation
-      final results = await Future.wait([
+      await Future.wait([
         _loadCoinValue().catchError((e) => print("Coin error: $e")),
         _loadInvestmentProfits().catchError((e) => print("Invest error: $e")),
         _loadReferrals().catchError((e) => print("Referral error: $e")),
-        _loadUserCoins().catchError(
-            (e) => print("User coins error: $e")), // Always load user coins
-        _loadInvestmentSummary().catchError(
-            (e) => print("Investment summary error: $e")), // Add this line
+        _loadUserCoins().catchError((e) => print("User coins error: $e")),
+        _loadInvestmentSummary()
+            .catchError((e) => print("Investment summary error: $e")),
       ], eagerError: false);
 
       // Serial loading for dependent operations
@@ -314,15 +395,31 @@ class _HomeScreenState extends State<HomeScreen>
 
       _calculateTotalIncome();
 
+      // Set all loading states to false in ONE setState call at the end
       if (mounted) {
         setState(() {
           _isLoadingProfile = false;
           _isLoadingCoinValue = false;
           _isLoadingInvestments = false;
+          _isLoadingUserCoins = false;
+          _isLoadingDeposits = false;
+          _isLoadingReferrals = false;
+          _isLoadingTodayProfit = false;
         });
       }
     } catch (e) {
       print("Global load error: $e");
+      if (mounted) {
+        setState(() {
+          _isLoadingProfile = false;
+          _isLoadingCoinValue = false;
+          _isLoadingInvestments = false;
+          _isLoadingUserCoins = false;
+          _isLoadingDeposits = false;
+          _isLoadingReferrals = false;
+          _isLoadingTodayProfit = false;
+        });
+      }
     }
   }
 
@@ -617,16 +714,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-// Create a widget for today's profit container
-  // Modified _buildTodayProfitContainer method to disable claim button when limit reached
   Widget _buildTodayProfitContainer() {
-    // Check if user has reached maximum income limit
-    bool hasReachedMaxLimit = false;
-    if (!_isLoadingDeposits && _totalDepositAmount > 0) {
-      double maxIncomeLimit = _totalDepositAmount * 3;
-      hasReachedMaxLimit = _totalIncome >= maxIncomeLimit;
-    }
-
     if (_isLoadingTodayProfit) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -666,11 +754,18 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     if (!_hasTodayProfit) {
-      // Return nothing if no profit is available
       return SizedBox.shrink();
     }
 
-    return Padding(
+    // Check if user has reached maximum income limit
+    bool hasReachedMaxLimit = false;
+    if (!_isLoadingDeposits && _totalDepositAmount > 0) {
+      double maxIncomeLimit = _totalDepositAmount * 3;
+      hasReachedMaxLimit = _totalIncome >= maxIncomeLimit;
+    }
+
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Container(
         width: double.infinity,
@@ -747,7 +842,7 @@ class _HomeScreenState extends State<HomeScreen>
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: hasReachedMaxLimit
-                    ? null // Disable the button if max limit reached
+                    ? null
                     : (_isClaimingProfit ? null : _claimTodayProfit),
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
@@ -762,18 +857,25 @@ class _HomeScreenState extends State<HomeScreen>
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                child: _isClaimingProfit
-                    ? SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
+                child: AnimatedSwitcher(
+                  duration: Duration(milliseconds: 200),
+                  child: _isClaimingProfit
+                      ? SizedBox(
+                          key: ValueKey('claiming'),
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          key: ValueKey('claim-button'),
+                          hasReachedMaxLimit
+                              ? 'MAX LIMIT REACHED'
+                              : 'CLAIM NOW',
                         ),
-                      )
-                    : Text(
-                        hasReachedMaxLimit ? 'MAX LIMIT REACHED' : 'CLAIM NOW',
-                      ),
+                ),
               ),
             ),
             if (hasReachedMaxLimit)
@@ -838,32 +940,19 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _loadCoinValue() async {
-    setState(() {
-      _isLoadingCoinValue = true;
-      _coinValueError = '';
-    });
-
     try {
       final response = await _coinService.getCurrentCoinValue();
 
-      if (response['success']) {
-        setState(() {
-          _coinValue = response['coinValue'].lkrValue;
-          _isLoadingCoinValue = false;
-        });
+      if (response['success'] && mounted) {
+        // Don't call setState here - let _loadAllData handle it
+        _coinValue = response['coinValue'].lkrValue;
         print('Coin value loaded: $_coinValue');
       } else {
-        setState(() {
-          _coinValueError = response['message'] ?? 'Failed to load coin value';
-          _isLoadingCoinValue = false;
-        });
+        _coinValueError = response['message'] ?? 'Failed to load coin value';
         print('Failed to load coin value: $_coinValueError');
       }
     } catch (e) {
-      setState(() {
-        _coinValueError = 'Error loading coin value';
-        _isLoadingCoinValue = false;
-      });
+      _coinValueError = 'Error loading coin value';
       print('Error loading coin value: $e');
     }
   }
@@ -889,58 +978,34 @@ class _HomeScreenState extends State<HomeScreen>
 
   // First, modify your _loadReferrals method in the _HomeScreenState class
   Future<void> _loadReferrals() async {
-    setState(() {
-      _isLoadingReferrals = true;
-      _referralsError = '';
-    });
-
     try {
-      // Get referral data from the API   getUserReferralLevels
-
       final responsetotal =
           await _referralService.getUserReferralLevels(_userId);
       if (responsetotal['success']) {
-        setState(() {
-          _totalReferralsCount1 = responsetotal['data']['totalReferrals'];
-        });
+        _totalReferralsCount1 = responsetotal['data']['totalReferrals'];
       }
+
       final response = await _referralService.getUserReferrals(_userId);
       print('response home $response');
 
-      if (response['success']) {
+      if (response['success'] && mounted) {
         final directReferrals = response['directReferrals'];
         final commissions = response['commissions'];
-
-        // Extract totalReferralsCount from the response
         final totalReferralsCount = response['totalReferralsCount'] ?? 0;
 
-        setState(() {
-          _directReferrals = directReferrals;
-          // Correctly set the referral income to the coin commission only
-          // The issue is here - you're adding coin to itself (doubling it)
-          _referralIncome = commissions.coin +
-              commissions.investment; // Sum of coin + investment commissions
-          _isLoadingReferrals = false;
-          _totalReferralsCount = totalReferralsCount; // Update the total count
-        });
+        // Don't call setState here - let _loadAllData handle it
+        _directReferrals = directReferrals;
+        _referralIncome = commissions.coin + commissions.investment;
+        _totalReferralsCount = totalReferralsCount;
+
         print(
             'Referrals loaded: ${_directReferrals.length}, Referral income: $_referralIncome, Total referrals: $_totalReferralsCount');
-
-        // Optionally log the individual components
-        print(
-            'Referral coin income: ${commissions.coin}, Referral investment income: ${commissions.investment}');
       } else {
-        setState(() {
-          _referralsError = response['message'] ?? 'Failed to load referrals';
-          _isLoadingReferrals = false;
-        });
+        _referralsError = response['message'] ?? 'Failed to load referrals';
         print('Failed to load referrals: $_referralsError');
       }
     } catch (e) {
-      setState(() {
-        _referralsError = 'Error loading referrals';
-        _isLoadingReferrals = false;
-      });
+      _referralsError = 'Error loading referrals';
       print('Error loading referrals: $e');
     }
   }
@@ -954,49 +1019,37 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _refreshData() async {
-    await _loadAllData();
+    if (_isRefreshing) return; // Prevent multiple simultaneous refreshes
+
+    _isRefreshing = true;
+    try {
+      await _loadAllData(forceRefresh: true);
+    } finally {
+      _isRefreshing = false;
+    }
   }
 
   Future<void> _loadUserCoins() async {
-    setState(() {
-      _isLoadingUserCoins = true;
-      _userCoinsError = '';
-    });
-
     try {
-      // First try to get the coin balance directly from the API
       final response = await _coinService.getUserCoinBalance(_userId);
 
-      if (response['success']) {
-        setState(() {
-          _userCoinCount = response['balance'] ?? 0.0;
-          _userCoinValueLKR = _userCoinCount * _coinValue;
-          _isLoadingUserCoins = false;
-        });
+      if (response['success'] && mounted) {
+        // Don't call setState here - let _loadAllData handle it
+        _userCoinCount = response['balance'] ?? 0.0;
+        _userCoinValueLKR = _userCoinCount * _coinValue;
         print('User coin balance loaded: $_userCoinCount');
       } else {
-        // If direct method fails, try to get from investment summary
         if (_investmentSummary != null) {
-          setState(() {
-            _userCoinCount = _investmentSummary!.currentCoinBalance;
-            _userCoinValueLKR = _userCoinCount * _coinValue;
-            _isLoadingUserCoins = false;
-          });
+          _userCoinCount = _investmentSummary!.currentCoinBalance;
+          _userCoinValueLKR = _userCoinCount * _coinValue;
           print('User coin balance loaded from summary: $_userCoinCount');
         } else {
-          setState(() {
-            _userCoinsError =
-                response['message'] ?? 'Failed to load user coins';
-            _isLoadingUserCoins = false;
-          });
+          _userCoinsError = response['message'] ?? 'Failed to load user coins';
           print('Failed to load user coins: $_userCoinsError');
         }
       }
     } catch (e) {
-      setState(() {
-        _userCoinsError = 'Error loading user coins';
-        _isLoadingUserCoins = false;
-      });
+      _userCoinsError = 'Error loading user coins';
       print('Error loading user coins: $e');
     }
   }
@@ -1043,88 +1096,91 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // Define the reusable container widget for auto-scrolling
-  Widget _buildAutoScrollContainer(int index) {
+  // Widget _buildAutoScrollContainer(int index) {
+  //   return Container(
+  //     width: 180, // Fixed width for each container
+  //     margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+  //     padding: const EdgeInsets.all(12.0),
+  //     decoration: BoxDecoration(
+  //       gradient: LinearGradient(
+  //         colors: [
+  //           Colors.red[900]!.withOpacity(0.8), // Deep red
+  //           Color(0xFFFFD700).withOpacity(0.9), // Golden yellow
+  //         ],
+  //         begin: Alignment.topLeft,
+  //         end: Alignment.bottomRight,
+  //       ),
+  //       borderRadius: BorderRadius.circular(12.0),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: Colors.black.withOpacity(0.1),
+  //           blurRadius: 8,
+  //           spreadRadius: 2,
+  //         ),
+  //       ],
+  //     ),
+  //     child: Center(
+  //       child: Text(
+  //         'Today TEC 1 Coin = LKR ${_coinValue.toStringAsFixed(2)}',
+  //         style: const TextStyle(
+  //           color: Colors.white,
+  //           fontSize: 16,
+  //           fontWeight: FontWeight.bold,
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  Widget _userCoinInfoWidget() {
+    // Cache values to prevent recalculation
+    final coinCount = _userCoinCount.toInt();
+    final coinValue = (_userCoinCount * _coinValue).toStringAsFixed(2);
+
     return Container(
-      width: 180, // Fixed width for each container
-      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
-      padding: const EdgeInsets.all(12.0),
+      margin: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.red[900]!.withOpacity(0.8), // Deep red
-            Color(0xFFFFD700).withOpacity(0.9), // Golden yellow
+            Colors.purple.withOpacity(0.6),
+            Colors.blue.withOpacity(0.4),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: BorderRadius.circular(16.0),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
+            blurRadius: 10,
             spreadRadius: 2,
           ),
         ],
       ),
-      child: Center(
-        child: Text(
-          'Today TEC 1 Coin = LKR ${_coinValue.toStringAsFixed(2)}',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  _userCoinInfoWidget() {
-    print(
-        'Value: LKR  $_userCoinCount * $_coinValue ${(_userCoinCount * _coinValue).toStringAsFixed(2)}');
-    return Container(
-        margin: const EdgeInsets.all(16.0),
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.purple.withOpacity(0.6),
-              Colors.blue.withOpacity(0.4),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16.0),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              spreadRadius: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text(
+            'T E C WALLET',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Text(
-              'T E C WALLET',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                    height: 45,
-                    width: 45,
-                    child: Image.asset('assets/coin.png')),
-                const SizedBox(width: 8),
-                _isLoadingUserCoins
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                  height: 45, width: 45, child: Image.asset('assets/coin.png')),
+              const SizedBox(width: 8),
+              AnimatedSwitcher(
+                duration: Duration(milliseconds: 200),
+                child: _isLoadingUserCoins
                     ? SizedBox(
+                        key: ValueKey('loading'),
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
@@ -1132,18 +1188,23 @@ class _HomeScreenState extends State<HomeScreen>
                           strokeWidth: 2,
                         ))
                     : Text(
-                        '${_userCoinCount.toInt()} Coins',
+                        key: ValueKey('loaded-$coinCount'),
+                        '$coinCount Coins',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _isLoadingUserCoins || _isLoadingCoinValue
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          AnimatedSwitcher(
+            duration: Duration(milliseconds: 200),
+            child: (_isLoadingUserCoins || _isLoadingCoinValue)
                 ? Text(
+                    key: ValueKey('loading-value'),
                     'Loading value...',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.7),
@@ -1151,14 +1212,17 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   )
                 : Text(
-                    'Value: LKR ${(_userCoinCount * _coinValue).toStringAsFixed(2)}',
+                    key: ValueKey('loaded-value-$coinValue'),
+                    'Value: LKR $coinValue',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.8),
                       fontSize: 16,
                     ),
                   ),
-          ],
-        ));
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -1239,38 +1303,34 @@ class _HomeScreenState extends State<HomeScreen>
                         child: Column(
                           children: [
                             // Auto-scrolling horizontal containers
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10.0, vertical: 2.0),
-                              child: SizedBox(
-                                height: 70,
-                                child: GestureDetector(
-                                  onPanDown: (_) {
-                                    print(
-                                        'User interaction: Pausing auto-scroll');
-                                    _autoScrollTimer?.cancel();
-                                  },
-                                  onPanEnd: (_) {
-                                    print(
-                                        'User interaction ended: Resuming auto-scroll');
-                                    _startAutoScrolling();
-                                  },
-                                  child: PageView.builder(
-                                    controller: _autoScrollController,
-                                    itemCount: 10,
-                                    itemBuilder: (context, index) {
-                                      return _buildAutoScrollContainer(index);
-                                    },
-                                    onPageChanged: (index) {
-                                      setState(() {
-                                        _autoScrollPage = index;
-                                        print('Page changed to: $index');
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ),
+                            // Padding(
+                            //   padding: const EdgeInsets.symmetric(
+                            //       horizontal: 10.0, vertical: 2.0),
+                            //   child: SizedBox(
+                            //     height: 70,
+                            //     child: GestureDetector(
+                            //       onPanDown: (_) {
+                            //         print(
+                            //             'User interaction: Pausing auto-scroll');
+                            //         _autoScrollTimer?.cancel();
+                            //       },
+                            //       child: PageView.builder(
+                            //         controller: _autoScrollController,
+                            //         itemCount: 10,
+                            //         itemBuilder: (context, index) {
+                            //           return _buildAutoScrollContainer(index);
+                            //         },
+                            //         onPageChanged: (index) {
+                            //           setState(() {
+                            //             _autoScrollPage = index;
+                            //             print('Page changed to: $index');
+                            //           });
+                            //         },
+                            //       ),
+                            //     ),
+                            //   ),
+                            // ),
+                            _buildAutoScrollSection(),
 
                             _buildWalletSection(),
                             // // Golden tape profit container

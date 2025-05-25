@@ -103,7 +103,7 @@ class AppTheme {
           case 2:
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => SetPinNavigator()),
+              MaterialPageRoute(builder: (context) => const SetPinNavigator()),
             );
             break;
           case 3:
@@ -139,109 +139,40 @@ class AppTheme {
   static Widget appBackground() {
     return Stack(
       children: [
-        Positioned(
-          top: 0,
-          left: 0,
-          child: Stack(
-            children: [
-              SvgPicture.asset(
-                'assets/Vector_1.svg',
-                fit: BoxFit.cover,
-              ),
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter:
-                      ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Blur effect
-                  child: Container(
-                    color: Colors
-                        .transparent, // Ensures only the vector is blurred
-                  ),
-                ),
-              ),
-            ],
+        // Ensure SVG assets are loaded and displayed
+        Positioned.fill(
+          child: SvgPicture.asset(
+            'assets/Vector_1.svg',
+            fit: BoxFit.cover, // Use BoxFit.cover to fill the available space
           ),
         ),
-        Positioned(
-          top: 50,
-          right: 0,
-          child: Stack(
-            children: [
-              SvgPicture.asset(
-                'assets/Vector_2.svg',
-                fit: BoxFit.cover,
-              ),
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter:
-                      ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Blur effect
-                  child: Container(
-                    color: Colors
-                        .transparent, // Ensures only the vector is blurred
-                  ),
-                ),
-              ),
-            ],
+        Positioned.fill(
+          child: SvgPicture.asset(
+            'assets/Vector_2.svg',
+            fit: BoxFit.cover,
           ),
         ),
-        Positioned(
-          bottom: 100,
-          left: 0,
-          child: Stack(
-            children: [
-              SvgPicture.asset(
-                'assets/Vector_3.svg',
-                fit: BoxFit.cover,
-              ),
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter:
-                      ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Blur effect
-                  child: Container(
-                    color: Colors
-                        .transparent, // Ensures only the vector is blurred
-                  ),
-                ),
-              ),
-            ],
+        Positioned.fill(
+          child: SvgPicture.asset(
+            'assets/Vector_3.svg',
+            fit: BoxFit.cover,
           ),
         ),
-        Positioned(
-          bottom: 0,
-          right: 0,
-          child: Stack(
-            children: [
-              SvgPicture.asset(
-                'assets/Vector_4.svg',
-                fit: BoxFit.cover,
-              ),
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter:
-                      ImageFilter.blur(sigmaX: 80, sigmaY: 80), // Blur effect
-                  child: Container(
-                    color: Colors
-                        .transparent, // Ensures only the vector is blurred
-                  ),
-                ),
-              ),
-            ],
+        Positioned.fill(
+          child: SvgPicture.asset(
+            'assets/Vector_4.svg',
+            fit: BoxFit.cover,
           ),
         ),
-        // Positioned(
-        //   top: 50,
-        //   right: 0,
-        //   child: SvgPicture.asset('assets/Vector_2.svg', fit: BoxFit.cover),
-        // ),
-        // Positioned(
-        //   bottom: 100,
-        //   left: 0,
-        //   child: SvgPicture.asset('assets/Vector_3.svg', fit: BoxFit.cover),
-        // ),
-        // Positioned(
-        //   bottom: 0,
-        //   right: 0,
-        //   child: SvgPicture.asset('assets/Vector_4.svg', fit: BoxFit.cover),
-        // ),
+        // Apply a single BackdropFilter to blur the entire background
+        Positioned.fill(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+            child: Container(
+              color: Colors.transparent, // Ensures only the blur is applied
+            ),
+          ),
+        ),
       ],
     );
   }

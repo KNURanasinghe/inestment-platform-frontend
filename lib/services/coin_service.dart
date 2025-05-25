@@ -219,7 +219,8 @@ class CoinService {
           'summary': summary,
         };
       } else {
-        final Map<String, dynamic> data = json.decode(response.body);
+        print('Failed to get investment summary: $response');
+        final Map<String, dynamic> data = jsonDecode(response.body);
         return {
           'success': false,
           'message': data['message'] ?? 'Failed to get investment summary',
