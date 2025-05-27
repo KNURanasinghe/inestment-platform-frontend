@@ -178,8 +178,13 @@ class _WithdrawPageState extends State<WithdrawPage> {
       _totalIncome = _investmentProfit + _referralIncome;
 
       // Calculate max income limit and check if reached
-      double maxIncomeLimit = (_totalDepositAmount / 1.1) * 3;
-      hasReachedMaxLimit = _totalIncome >= maxIncomeLimit;
+
+      if (_totalIncome > 0) {
+        double maxIncomeLimit = (_totalDepositAmount / 1.1) * 3;
+        hasReachedMaxLimit = _totalIncome >= maxIncomeLimit;
+      } else {
+        hasReachedMaxLimit = false;
+      }
 
       _isLoadingIncome = false;
     });
@@ -301,6 +306,10 @@ class _WithdrawPageState extends State<WithdrawPage> {
     double maxIncomeLimit = (_totalDepositAmount / 1.1) * 3;
     double remainingEarnings = maxIncomeLimit - _totalIncome;
 
+    double progressValue = maxIncomeLimit > 0
+        ? (_totalIncome / maxIncomeLimit).clamp(0.0, 1.0)
+        : 0.0;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
@@ -360,7 +369,7 @@ class _WithdrawPageState extends State<WithdrawPage> {
           ),
           const SizedBox(height: 6),
           LinearProgressIndicator(
-            value: _totalIncome / maxIncomeLimit,
+            value: progressValue,
             backgroundColor: Colors.white.withOpacity(0.3),
             valueColor: AlwaysStoppedAnimation<Color>(
               hasReachedMaxLimit ? Colors.red[300]! : Colors.white,
@@ -415,7 +424,9 @@ class _WithdrawPageState extends State<WithdrawPage> {
                   const SizedBox(height: 40),
 
                   // Show income limit message if data is loaded
-                  if (!_isLoadingIncome && !_isLoadingDeposits)
+                  if (!_isLoadingIncome &&
+                      !_isLoadingDeposits &&
+                      _totalDepositAmount > 0)
                     _buildIncomeLimitMessage(),
 
                   GestureDetector(
